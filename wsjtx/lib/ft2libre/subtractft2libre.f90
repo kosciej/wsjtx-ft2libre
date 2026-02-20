@@ -41,8 +41,8 @@ subroutine subtractft2libre(dd0,itone,f0,dt)
      enddo
   endif
 
-! Generate complex reference waveform cref
-  call gen_ft8wave(itone,79,288,2.0,12000.0,f0,cref,xjunk,1,NFRAME)
+! Generate complex reference waveform cref (h=0.75 via gen_ft2libre_wave)
+  call gen_ft2libre_wave(itone,79,360,2.0,12000.0,f0,cref,xjunk,1,NFRAME)
 
   nstart=dt*12000+1
   camp=0.

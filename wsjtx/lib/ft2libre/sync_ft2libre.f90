@@ -4,8 +4,8 @@ subroutine sync_ft2libre(dd,npts,nfa,nfb,syncmin,nfqso,maxcand,   &
   include 'ft2libre_params.f90'
   parameter (MAXPRECAND=1000)
 ! Maximum sync correlation lag +/- ~200ms relative to TX start time.
-! 200ms / 24ms/symbol * 4 samples/symbol ~ 33 lag steps
-  parameter (JZ=33)
+! 200ms / 30ms/symbol * 4 samples/symbol ~ 27 lag steps
+  parameter (JZ=27)
   complex cx(0:NH1)
   real s(NH1,NHSYM)
   real savg(NH1)
@@ -48,11 +48,11 @@ subroutine sync_ft2libre(dd,npts,nfa,nfb,syncmin,nfqso,maxcand,   &
   ia=max(1,nint(nfa/df))
   ib=nint(nfb/df)
   nssy=NSPS/NSTEP   ! # steps per symbol
-  nfos=NFFT1/NSPS   ! # frequency bin oversampling factor
   jstrt=0.5/tstep
   candidate0=0.
   k=0
 
+! NTBIN = tone spacing in FFT bins (h=0.75, from params)
   do i=ia,ib
      do j=-JZ,+JZ
         ta=0.
@@ -64,16 +64,16 @@ subroutine sync_ft2libre(dd,npts,nfa,nfb,syncmin,nfqso,maxcand,   &
         do n=0,6
            m=j+jstrt+nssy*n
            if(m.ge.1.and.m.le.NHSYM) then
-              ta=ta + s(i+nfos*icos7(n),m)
-              t0a=t0a + sum(s(i:i+nfos*6:nfos,m))
+              ta=ta + s(i+NTBIN*icos7(n),m)
+              t0a=t0a + sum(s(i:i+NTBIN*6:NTBIN,m))
            endif
            if(m+nssy*36.ge.1.and.m+nssy*36.le.NHSYM) then
-              tb=tb + s(i+nfos*icos7(n),m+nssy*36)
-              t0b=t0b + sum(s(i:i+nfos*6:nfos,m+nssy*36))
+              tb=tb + s(i+NTBIN*icos7(n),m+nssy*36)
+              t0b=t0b + sum(s(i:i+NTBIN*6:NTBIN,m+nssy*36))
            endif
            if(m+nssy*72.ge.1.and.m+nssy*72.le.NHSYM) then
-              tc=tc + s(i+nfos*icos7(n),m+nssy*72)
-              t0c=t0c + sum(s(i:i+nfos*6:nfos,m+nssy*72))
+              tc=tc + s(i+NTBIN*icos7(n),m+nssy*72)
+              t0c=t0c + sum(s(i:i+NTBIN*6:NTBIN,m+nssy*72))
            endif
         enddo
         t=ta+tb+tc

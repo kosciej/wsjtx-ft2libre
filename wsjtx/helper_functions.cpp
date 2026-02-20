@@ -28,7 +28,7 @@ double tx_duration(QString mode, double trPeriod, int nsps, bool bFast9)
   if(mode=="MSK144" or bFast9) {
     txt=trPeriod-0.25; // JT9-fast, MSK144
   }
-  if(mode=="FT2Libre") txt=158*288/12000.0;    // FT2Libre (~3.8s, 79 sym x2)
+  if(mode=="FT2Libre") txt=79*360/12000.0;      // FT2Libre (~2.37s)
   if(mode=="Echo") txt=2.6;
   return txt;
 }

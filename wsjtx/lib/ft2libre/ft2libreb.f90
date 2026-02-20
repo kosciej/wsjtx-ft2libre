@@ -7,6 +7,8 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
   use packjt77
   include 'ft2libre_params.f90'
   parameter(NP2=NMAX/NDOWN)
+  parameter(NSPSD=NSPS/NDOWN)           !30 samples per symbol downsampled
+  parameter(NFFT_SYM=40)                !FFT size for soft symbols (zero-padded)
   character*37 msg37
   character*77 c77
   real a(5)
@@ -24,8 +26,8 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
   integer graymap(0:7)
   integer iloc(1)
   complex cd0(0:NP2-1)
-  complex ctwk(32)
-  complex csymb(32)
+  complex ctwk(NSPSD)
+  complex csymb(NFFT_SYM)
   complex cs(0:7,NN)
   logical first,newdat,lsubtract,nagain,unpk77_success
   data icos7/3,1,4,0,6,5,2/
@@ -58,7 +60,7 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
   i0=nint((xdt+0.5)*fs2)
   smax=0.0
   do idt=i0-10,i0+10
-     call sync8d(cd0,idt,ctwk,0,sync)
+     call sync8d_ft2libre(cd0,idt,ctwk,0,sync)
      if(sync.gt.smax) then
         smax=sync
         ibest=idt
@@ -71,11 +73,11 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
     delf=ifr*0.5
     dphi=twopi*delf*dt2
     phi=0.0
-    do i=1,32
+    do i=1,NSPSD
       ctwk(i)=cmplx(cos(phi),sin(phi))
       phi=mod(phi+dphi,twopi)
     enddo
-    call sync8d(cd0,ibest,ctwk,1,sync)
+    call sync8d_ft2libre(cd0,ibest,ctwk,1,sync)
     if( sync .gt. smax ) then
       smax=sync
       delfbest=delf
@@ -92,7 +94,7 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
 
   smax=0.0
   do idt=-4,4
-     call sync8d(cd0,ibest+idt,ctwk,0,sync)
+     call sync8d_ft2libre(cd0,ibest+idt,ctwk,0,sync)
      ss(idt+5)=sync
   enddo
   smax=maxval(ss)
@@ -101,11 +103,12 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
   xdt=(ibest-1)*dt2
   sync=smax
 
+! Extract soft symbols using zero-padded FFT
   do k=1,NN
-    i1=ibest+(k-1)*32
+    i1=ibest+(k-1)*NSPSD
     csymb=cmplx(0.0,0.0)
-    if( i1.ge.0 .and. i1+31 .le. NP2-1 ) csymb=cd0(i1:i1+31)
-    call four2a(csymb,32,1,-1,1)
+    if( i1.ge.0 .and. i1+NSPSD-1 .le. NP2-1 ) csymb(1:NSPSD)=cd0(i1:i1+NSPSD-1)
+    call four2a(csymb,NFFT_SYM,1,-1,1)
     cs(0:7,k)=csymb(1:8)/1e3
     s8(0:7,k)=abs(csymb(1:8))
   enddo
@@ -222,7 +225,7 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
      call timer('dec174_91 ',0)
      Keff=91
      call decode174_91(llrz,Keff,maxosd,norder,apmask,message91,cw,  &
-                       ntype,nharderrors,dmin)
+                       nharderrors,dmin)
      if(nharderrors.ge.0) message77=message91(1:77)
      call timer('dec174_91 ',1)
 
