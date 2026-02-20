@@ -352,6 +352,7 @@ set (wsjt_FSRCS
   lib/jt65_mod6.f90 #ft8md
   lib/ft8_decode.f90
   lib/ft4_decode.f90
+  lib/ft2libre_decode.f90
   lib/fst4_decode.f90
   lib/get_q3list.f90
   lib/jt9_decode.f90
@@ -584,6 +585,11 @@ set (wsjt_FSRCS
   lib/ft4/get_ft4_bitmetrics.f90
   lib/ft8/sync8.f90
   lib/ft8/sync8d.f90
+  lib/ft2libre/ft2libre_downsample.f90
+  lib/ft2libre/sync_ft2libre.f90
+  lib/ft2libre/ft2libreb.f90
+  lib/ft2libre/subtractft2libre.f90
+  lib/ft2libre/get_spectrum_baseline_ft2libre.f90
   lib/ft4/sync4d.f90
   lib/sync9.f90
   lib/sync9f.f90

@@ -11,6 +11,7 @@ subroutine multimode_decoder(ss,id2,params,nfsample)
   use ft4_decode
   use fst4_decode
   use q65_decode
+  use ft2libre_decode
 
 !ft8md added 3 uses below
   use ft8_mod1, only : ndecodes,allmessages,allsnrs,allfreq,mycall12_0,         &
@@ -58,6 +59,10 @@ subroutine multimode_decoder(ss,id2,params,nfsample)
      integer :: decoded
   end type counting_q65_decoder
 
+  type, extends(ft2libre_decoder) :: counting_ft2libre_decoder
+     integer :: decoded
+  end type counting_ft2libre_decoder
+
   logical first,firstsd !ft8md
   logical(1) lhoundprev !ft8md
   integer nutc,ndelay
@@ -86,7 +91,8 @@ subroutine multimode_decoder(ss,id2,params,nfsample)
   type(counting_ft8_decodervar) :: my_ft8var
   type(counting_ft4_decoder) :: my_ft4
   type(counting_fst4_decoder) :: my_fst4
-  type(counting_q65_decoder) :: my_q65  
+  type(counting_q65_decoder) :: my_q65
+  type(counting_ft2libre_decoder) :: my_ft2libre
 
   if(.not.params%newdat .and. params%ntr.gt.ntr0) go to 800
   ntr0=params%ntr
@@ -1198,6 +1204,17 @@ subroutine multimode_decoder(ss,id2,params,nfsample)
      go to 800
   endif
 
+  if(params%nmode.eq.2) then
+     ! We're in FT2Libre mode
+     call timer('dec_f2l ',0)
+     call my_ft2libre%decode(ft2libre_decoded,id2,params%nfqso,       &
+          logical(params%newdat),params%nutc,params%nfa,params%nfb,   &
+          params%nzhsym,params%ndepth,ncontest,                       &
+          logical(params%nagain),mycall,hiscall)
+     call timer('dec_f2l ',1)
+     go to 800
+  endif
+
   if(params%nmode.eq.66) then        !NB: JT65 = 65, Q65 = 66.
      ! We're in Q65 mode
      open(17,file=trim(temp_dir)//'/red.dat',status='unknown')
@@ -1381,7 +1398,7 @@ subroutine multimode_decoder(ss,id2,params,nfsample)
 ! JT65 is not yet producing info for nsynced, ndecoded.
 800 ndecoded = my_jt4%decoded + my_jt65%decoded + my_jt9%decoded +       &
          my_ft8%decoded + my_ft8var%decodedvar + my_ft4%decoded +        &
-         my_fst4%decoded + my_q65%decoded
+         my_fst4%decoded + my_q65%decoded + my_ft2libre%decoded
   if(params%lmultift8 .and. params%nmode.eq.8) then
      if(params%nzhsym.eq.41) ndec41=0
      if(params%nzhsym.eq.46) ndec46=ndecoded
@@ -1853,6 +1870,48 @@ contains
 
     return
   end subroutine ft4_decoded
+
+  subroutine ft2libre_decoded (this,sync,snr,dt,freq,decoded,nap,qual)
+    use ft2libre_decode
+    implicit none
+
+    class(ft2libre_decoder), intent(inout) :: this
+    real, intent(in) :: sync
+    integer, intent(in) :: snr
+    real, intent(in) :: dt
+    real, intent(in) :: freq
+    character(len=37), intent(in) :: decoded
+    integer, intent(in) :: nap
+    real, intent(in) :: qual
+    character*2 annot
+    character*37 decoded0
+
+    decoded0=decoded
+
+    annot='  '
+    if(nap.ne.0) then
+       write(annot,'(a1,i1)') 'a',nap
+       if(qual.lt.0.17) decoded0(37:37)='?'
+    endif
+
+    write(*,1001) params%nutc,snr,dt,nint(freq),decoded0,annot
+1001 format(i6.6,i4,f5.1,i5,' ~ ',1x,a37,1x,a2)
+
+    if(ios13.eq.0) then
+       write(13,1002,err=10) params%nutc,nint(sync),snr,dt,freq,0,decoded0
+1002   format(i6.6,i4,i5,f6.1,f8.0,i4,3x,a37,' FT2Libre')
+       flush(13)
+    endif
+
+10  call flush(6)
+
+    select type(this)
+    type is (counting_ft2libre_decoder)
+       this%decoded = this%decoded + 1
+    end select
+
+    return
+  end subroutine ft2libre_decoded
 
   subroutine fst4_decoded (this,nutc,sync,nsnr,dt,freq,decoded,nap,   &
        qual,ntrperiod,fmid,w50)

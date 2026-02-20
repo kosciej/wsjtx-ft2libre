@@ -51,6 +51,7 @@ public:
     FST4,
     FST4W,
     Q65,
+    FT2Libre,
     MODES_END_SENTINAL_AND_COUNT // this must be last
   };
   Q_ENUM (Mode)
