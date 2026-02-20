@@ -1,2 +1,25 @@
-# Add any directories, files, or patterns you don't want to be tracked by version control
+# Build output
+build/
+
+# Editor backup/swap files
 ~*
+*~
+*.swp
+*.swo
+\#*\#
+.#*
+
+# macOS
+.DS_Store
+
+# Source tarballs (large binaries, already in src/)
+src/*.tgz
+src/*.tar.gz
+src/*.md5sum
+
+# Emacs autosave of CMakeLists
+\#CMakeLists.txt\#
+
+# Tags
+tags
+TAGS
