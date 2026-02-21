@@ -1,9 +1,8 @@
-# FT2 Protocol — Extracted from Decodium 3 Source Code
+# FT2 Protocol Specification
 
-Source: commit `a78ce8b` in `iu8lmc/decodium3-build`
-("Decodium 3 FT2 - rebrand, FT2 mode, Linux Docker build")
+Derived from publicly available source code analysis.
 
-## Core Parameters (`lib/ft2/ft2_params.f90`)
+## Core Parameters
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
@@ -24,13 +23,13 @@ Source: commit `a78ce8b` in `iu8lmc/decodium3-build`
 
 - **4-GFSK** (Gaussian Frequency Shift Keying with 4 tones)
 - **Tones**: {0, 1, 2, 3}
-- **Modulation index h = 1.0** (set in `gen_ft2wave.f90`: `hmod=1.0`)
-- **BT = 1.0** (Gaussian filter bandwidth-time product, from `subtractft2.f90`: `bt=1.0`)
+- **Modulation index h = 1.0**
+- **BT = 1.0** (Gaussian filter bandwidth-time product)
 - **Baud rate**: 12000/288 = **41.667 Hz**
 - **Tone spacing**: h * baud = 1.0 * 41.667 = **41.667 Hz**
 - **Signal bandwidth**: 3 * 41.667 = 125 Hz center-to-center, ~167 Hz effective with GFSK spreading
 
-## Gray Code Mapping (`genft2.f90`)
+## Gray Code Mapping
 
 Bit pairs are mapped to tones using Gray code:
 
@@ -46,18 +45,16 @@ Bit pairs are mapped to tones using Gray code:
 - **LDPC(174,91)** — same code as FT8
 - 77 message bits + 14 CRC bits = 91 information bits
 - Encoded to 174 coded bits = 87 data symbols (2 bits/symbol)
-- Uses `encode174_91()` / `decode174_91()` routines
 
 ## Message Format
 
-- **77-bit message** — same as FT8 (`packjt77` module)
+- **77-bit message** — same packing as FT8
 - **Scrambling vector (rvec)**: applied to message bits before encoding:
   ```
   0,1,0,0,1,0,1,0,0,1,0,1,1,1,1,0,1,0,0,0,1,0,0,1,1,0,1,1,0,
   1,0,0,1,0,1,1,0,0,0,0,1,0,0,0,1,0,1,0,0,1,1,1,1,0,0,1,0,1,
   0,1,0,1,0,1,1,0,1,1,1,1,1,0,0,0,1,0,1
   ```
-- Same pack77/unpack77 as FT8
 
 ## Frame Structure
 
@@ -100,15 +97,15 @@ Note: These are each permutations of {0,1,2,3}. Each array is 4 symbols long
 
 ## Timing
 
-- **T/R period**: 3.75 seconds (`m_TRperiod=3.75`)
-- **TX duration**: 105 * 288/12000 = **2.52 seconds** (as noted in `genft2.f90`)
+- **T/R period**: 3.75 seconds
+- **TX duration**: 105 * 288/12000 = **2.52 seconds**
 - **Guard time**: 3.75 - 2.52 = 1.23 seconds
-- **TX delay**: 500 ms (`delay_ms=500` in Modulator.cpp)
+- **TX delay**: 500 ms
 - **Max samples**: 45000 = 3.75 * 12000
 
-## Waveform Generation (`gen_ft2wave.f90`)
+## Waveform Generation
 
-- GFSK pulse shaping via `gfsk_pulse(1.0, tt)` function (BT=1.0)
+- GFSK pulse shaping with BT=1.0
 - Pulse extends over 3 symbol periods (3*NSPS samples)
 - Phase is continuous (accumulated dphi)
 - Ramp-up: first NSPS samples shaped with cosine taper `(1-cos)/2`
@@ -117,32 +114,32 @@ Note: These are each permutations of {0,1,2,3}. Each array is 4 symbols long
 
 ## Decoding Pipeline
 
-### 1. Candidate Detection (`getcandidates2.f90`)
-- Nutall-windowed FFT (NFFT1=1152) stepping by NSPS
+### 1. Candidate Detection
+- Nuttall-windowed FFT (NFFT1=1152) stepping by NSPS
 - Spectral averaging and baseline estimation
 - Peak detection in smoothed spectrum
 - Frequency range: 200-4910 Hz
 - Frequency offset correction: `-1.5 * 12000/NSPS`
 
-### 2. Downsampling (`ft2_downsample.f90`)
+### 2. Downsampling
 - Factor 9 downsampling: 12000 Hz -> 1333.33 Hz
 - Bandpass filter: flat bandwidth = 4*baud, transition = 0.5*baud
 - Frequency-shifted to baseband
 
-### 3. Sync Detection (`sync2d.f90`)
+### 3. Sync Detection
 - Correlates against all 4 Costas arrays simultaneously
 - Expected positions: i0, i0+33*NSS, i0+66*NSS, i0+99*NSS (where NSS=NSPS/NDOWN=32)
 - Coarse search: step=4, range=-688 to 2024
 - Fine search: step=1, +/-5 around best
 - Frequency search: +/-12 Hz coarse (step 3), +/-4 Hz fine (step 1)
 
-### 4. Bit Metrics (`get_ft2_bitmetrics.f90`)
+### 4. Bit Metrics
 - FFT each symbol (NSS=32 samples) to extract tone powers
 - 3 coherence modes: 1-symbol, 2-symbol, 4-symbol integration
 - Gray-code-aware soft bit computation
 - Sync quality check: requires >= 4/16 correct hard sync symbols
 
-### 5. LDPC Decoding (`ft2_decode.f90`)
+### 5. LDPC Decoding
 - Up to 5 metric passes (3 coherence modes + best-of + average)
 - Additional AP (a priori) passes depending on QSO progress
 - LDPC decode with OSD (ordered statistics decoding)
@@ -151,12 +148,11 @@ Note: These are each permutations of {0,1,2,3}. Each array is 4 symbols long
 
 ## Fox/Hound Mode
 
-- Fox mode supported (`foxgenft2.f90`)
 - Multi-slot transmission: up to 3 slots
 - Slot spacing: **200 Hz** (vs 60 Hz for FT8)
 - Signal BW per slot: ~167 Hz
 - Fox waveform generated at 48000 Hz, NSPS=4*288=1152
-- Spectral filtering via `foxfiltft2.f90` with 50 Hz transition width
+- Spectral filtering with 50 Hz transition width
 
 ## Sample Rates
 
@@ -168,7 +164,6 @@ Note: These are each permutations of {0,1,2,3}. Each array is 4 symbols long
 
 ## Sync Quality Thresholds
 
-- `syncmin = 0.90` — minimum sync power for candidate
-- `nsync >= 4` — minimum correct hard sync symbols (out of 16)
-- `nsync_qual >= 15` — refined sync check on hard-decoded sync bits (out of 32 bits)
-- `badsync` flag set if sync quality too low
+- Minimum sync power: 0.90
+- Minimum correct hard sync symbols: 4 out of 16
+- Refined sync check threshold: 15 out of 32 hard-decoded sync bits
