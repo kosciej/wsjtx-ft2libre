@@ -1,15 +1,17 @@
-! FT2Libre: FT8 modulation (8-GFSK, LDPC(174,91), Costas 7x7) at ~33 Bd
-! Modulation index h=0.75: tone spacing = 25 Hz, BW ~ 175 Hz
+! FT2Libre: 4-GFSK, LDPC(174,91), 4x4 Costas arrays at ~41.7 Bd
+! Modulation index h=1.0: tone spacing = 41.667 Hz, BW ~ 125 Hz
 ! LDPC (174,91) code
 parameter (KK=91)                     !Information bits (77 + CRC14)
-parameter (ND=58)                     !Data symbols
-parameter (NS=21)                     !Sync symbols (3 @ Costas 7x7)
-parameter (NN=NS+ND)                  !Total channel symbols (79)
-parameter (NSPS=360)                  !Samples per symbol at 12000 S/s (30ms)
-parameter (NZ=NSPS*NN)                !Samples in full waveform (28440)
+parameter (ND=87)                     !Data symbols (174 bits / 2 bits per symbol)
+parameter (NS=16)                     !Sync symbols (4 x 4-symbol Costas arrays)
+parameter (NN=NS+ND)                  !Total channel symbols (103)
+parameter (NN2=NN+2)                  !Total with ramp symbols (105)
+parameter (NSPS=288)                  !Samples per symbol at 12000 S/s
+parameter (NZ=NSPS*NN)                !Samples in sync+data waveform (29664)
+parameter (NZ2=NSPS*NN2)              !Total samples including ramps (30240)
 parameter (NMAX=45000)                !Samples in iwave (3.75s = 60/16)
-parameter (NFFT1=960, NH1=NFFT1/2)    !FFTs for symbol spectra (df=12.5 Hz)
-parameter (NSTEP=NSPS/4)              !Rough time-sync step size (90)
-parameter (NHSYM=NMAX/NSTEP-3)        !Number of symbol spectra (497)
-parameter (NDOWN=12)                  !Downsample factor (360/12=30 samp/sym)
-parameter (NTBIN=2)                   !Tone spacing in FFT bins (h=0.75, nfos*h)
+parameter (NFFT1=1152, NH1=NFFT1/2)  !FFTs for symbol spectra (df=10.42 Hz)
+parameter (NSTEP=NSPS)                !Rough time-sync step size (288)
+parameter (NHSYM=NMAX/NSTEP-3)       !Number of symbol spectra (153)
+parameter (NDOWN=9)                   !Downsample factor (288/9=32 samp/sym)
+parameter (NTBIN=4)                   !Tone spacing in FFT bins (h=1.0)

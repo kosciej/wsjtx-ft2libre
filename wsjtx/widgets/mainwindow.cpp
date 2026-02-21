@@ -143,6 +143,9 @@ extern "C" {
   void gen_ft2libre_wave_(int itone[], int* nsym, int* nsps, float* bt, float* fsample, float* f0,
                     float xjunk[], float wave[], int* icmplx, int* nwave);
 
+  void genft2libre_(char msg[], int* i3, int* n3, char msgsent[],
+                    char ft2msgbits[], int itone[], FCL len1, FCL len2);
+
   void gen_ft4wave_(int itone[], int* nsym, int* nsps, float* fsample, float* f0,
                     float xjunk[], float wave[], int* icmplx, int* nwave);
 
@@ -7849,16 +7852,16 @@ void MainWindow::guiUpdate()
         if(m_mode=="FT2Libre") {
           int i3=0;
           int n3=0;
-          char ft8msgbits[77];
-          genft8_(message, &i3, &n3, msgsent, const_cast<char *> (ft8msgbits),
+          char ft2msgbits[77];
+          genft2libre_(message, &i3, &n3, msgsent, const_cast<char *> (ft2msgbits),
                   const_cast<int *> (itone), (FCL)37, (FCL)37);
-          int nsym=79;
-          int nsps=4*360;
+          int nsym=103;
+          int nsps=4*288;
           float fsample=48000.0;
-          float bt=2.0;
+          float bt=1.0;
           float f0=ui->TxFreqSpinBox->value() - m_XIT;
           int icmplx=0;
-          int nwave=nsym*nsps;
+          int nwave=(nsym+2)*nsps;
           gen_ft2libre_wave_(const_cast<int *>(itone),&nsym,&nsps,&bt,&fsample,&f0,foxcom_.wave,
                        foxcom_.wave,&icmplx,&nwave);
         }
@@ -11296,7 +11299,7 @@ void MainWindow::on_actionFT2Libre_triggered()
   else Q_EMIT FFTSize (m_FFTSize);
   m_hsymStop=13;
   setup_status_bar (bVHF);
-  m_toneSpacing=0.75*12000.0/360.0;     //h=0.75, 25 Hz tone spacing
+  m_toneSpacing=1.0*12000.0/288.0;      //h=1.0, 41.667 Hz tone spacing
   ui->actionFT2Libre->setChecked(true);
   m_wideGraph->setMode(m_mode);
   m_send_RR73=true;
@@ -12550,12 +12553,12 @@ void MainWindow::transmit (double snr)
   if (m_mode == "FT2Libre") {
     toneSpacing=-2.0;                     //Transmit a pre-computed, filtered waveform.
     if (m_tci_audio) {
-      Q_EMIT m_config.transceiver_modulator_start(m_mode, 79,
-             360.0,ui->TxFreqSpinBox->value()-m_XIT,
+      Q_EMIT m_config.transceiver_modulator_start(m_mode, 105,
+             288.0,ui->TxFreqSpinBox->value()-m_XIT,
              toneSpacing,true,false,snr,m_TRperiod);
     } else {
-      Q_EMIT sendMessage (m_mode, 79,
-             360.0, ui->TxFreqSpinBox->value() - m_XIT,
+      Q_EMIT sendMessage (m_mode, 105,
+             288.0, ui->TxFreqSpinBox->value() - m_XIT,
              toneSpacing, m_soundOutput, m_config.audio_output_channel(),
              true, false, snr, m_TRperiod);
     }

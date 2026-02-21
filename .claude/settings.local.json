@@ -18,7 +18,15 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(ctest:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebSearch",
+      "WebFetch(domain:nexttechworld.com)",
+      "WebFetch(domain:vu3dxr.in)",
+      "Bash(python3:*)",
+      "Bash(uv:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(git add:*)",
+      "Bash(gh api:*)"
     ]
   }
 }

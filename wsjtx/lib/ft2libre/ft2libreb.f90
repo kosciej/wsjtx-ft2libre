@@ -7,13 +7,13 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
   use packjt77
   include 'ft2libre_params.f90'
   parameter(NP2=NMAX/NDOWN)
-  parameter(NSPSD=NSPS/NDOWN)           !30 samples per symbol downsampled
-  parameter(NFFT_SYM=40)                !FFT size for soft symbols (zero-padded)
+  parameter(NSPSD=NSPS/NDOWN)           !32 samples per symbol downsampled
+  parameter(NFFT_SYM=32)                !FFT size for soft symbols (= NSPSD)
   character*37 msg37
   character*77 c77
   real a(5)
-  real s8(0:7,NN)
-  real s2(0:511)
+  real s4(0:3,NN)
+  real s2(0:255)
   real bmeta(174),bmetb(174),bmetc(174),bmetd(174),bmete(174)
   real llra(174),llrb(174),llrc(174),llrd(174),llre(174),llrz(174)
   real dd0(NMAX)
@@ -21,24 +21,35 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
   real temp(3)
   integer*1 message77(77),message91(91),apmask(174),cw(174)
   integer itone(NN)
-  integer icos7(0:6),ip(1)
-  logical one(0:511,0:8)
-  integer graymap(0:7)
+  integer ip(1)
+  logical one(0:255,0:7)
+  integer graymap(0:3)
   integer iloc(1)
   complex cd0(0:NP2-1)
   complex ctwk(NSPSD)
   complex csymb(NFFT_SYM)
-  complex cs(0:7,NN)
+  complex cs(0:3,NN)
   logical first,newdat,lsubtract,nagain,unpk77_success
-  data icos7/3,1,4,0,6,5,2/
+
+  integer icos_a(0:3),icos_b(0:3),icos_c(0:3),icos_d(0:3)
+  data icos_a/0,1,3,2/
+  data icos_b/1,0,2,3/
+  data icos_c/2,3,1,0/
+  data icos_d/3,2,0,1/
+
+  integer*1 rvec(77)
+  data rvec/0,1,0,0,1,0,1,0,0,1,0,1,1,1,1,0,1,0,0,0,1,0,0,1,1,0,1,1,0, &
+            1,0,0,1,0,1,1,0,0,0,0,1,0,0,0,1,0,1,0,0,1,1,1,1,0,0,1,0,1, &
+            0,1,0,1,0,1,1,0,1,1,1,1,1,0,0,0,1,0,1/
+
   data first/.true./
-  data graymap/0,1,3,2,5,6,4,7/
+  data graymap/0,1,3,2/
   save one
 
   if(first) then
      one=.false.
-     do i=0,511
-       do j=0,8
+     do i=0,255
+       do j=0,7
          if(iand(i,2**j).ne.0) one(i,j)=.true.
        enddo
      enddo
@@ -103,69 +114,81 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
   xdt=(ibest-1)*dt2
   sync=smax
 
-! Extract soft symbols using zero-padded FFT
+! Extract soft symbols using FFT (NFFT_SYM = NSPSD = 32)
   do k=1,NN
     i1=ibest+(k-1)*NSPSD
     csymb=cmplx(0.0,0.0)
     if( i1.ge.0 .and. i1+NSPSD-1 .le. NP2-1 ) csymb(1:NSPSD)=cd0(i1:i1+NSPSD-1)
     call four2a(csymb,NFFT_SYM,1,-1,1)
-    cs(0:7,k)=csymb(1:8)/1e3
-    s8(0:7,k)=abs(csymb(1:8))
+    cs(0:3,k)=csymb(1:4)/1e3
+    s4(0:3,k)=abs(csymb(1:4))
   enddo
 
-! sync quality check
+! Sync quality check against all four Costas arrays
   is1=0
   is2=0
   is3=0
-  do k=1,7
-    ip=maxloc(s8(:,k))
-    if(icos7(k-1).eq.(ip(1)-1)) is1=is1+1
-    ip=maxloc(s8(:,k+36))
-    if(icos7(k-1).eq.(ip(1)-1)) is2=is2+1
-    ip=maxloc(s8(:,k+72))
-    if(icos7(k-1).eq.(ip(1)-1)) is3=is3+1
+  is4=0
+  do k=0,3
+    ip=maxloc(s4(:,k+1))
+    if(icos_a(k).eq.(ip(1)-1)) is1=is1+1
+    ip=maxloc(s4(:,k+34))
+    if(icos_b(k).eq.(ip(1)-1)) is2=is2+1
+    ip=maxloc(s4(:,k+67))
+    if(icos_c(k).eq.(ip(1)-1)) is3=is3+1
+    ip=maxloc(s4(:,k+100))
+    if(icos_d(k).eq.(ip(1)-1)) is4=is4+1
   enddo
-  nsync=is1+is2+is3
-  syncmin=6
-  if(imetric.eq.2) syncmin=7
-  if(ndepth.le.2) syncmin=8
-  if(nsync.le.syncmin) then
+  nsync=is1+is2+is3+is4
+  syncmin_hard=4
+  if(imetric.eq.2) syncmin_hard=5
+  if(ndepth.le.2) syncmin_hard=6
+  if(nsync.le.syncmin_hard) then
     nbadcrc=1
     return
   endif
 
+! Compute bit metrics using 1, 2, and 4-symbol coherent integration
+! Three data blocks: symbols 5-33, 38-66, 71-99 (1-indexed in NN=103 frame)
   do nsym=1,3
-    nt=2**(3*nsym)
-    do ihalf=1,2
-      do k=1,29,nsym
-        if(ihalf.eq.1) ks=k+7
-        if(ihalf.eq.2) ks=k+43
+    if(nsym.eq.3) nsym_actual=4        !Use 4-symbol integration as third mode
+    if(nsym.eq.1) nsym_actual=1
+    if(nsym.eq.2) nsym_actual=2
+    nt=4**nsym_actual                   !Number of possible tone combinations
+    do iblock=1,3
+      if(iblock.eq.1) koff=4           !Data starts after Costas A (pos 5)
+      if(iblock.eq.2) koff=37          !Data starts after Costas B (pos 38)
+      if(iblock.eq.3) koff=70          !Data starts after Costas C (pos 71)
+      do k=1,29-nsym_actual+1,nsym_actual
+        ks=k+koff
         amax=-1.0
         do i=0,nt-1
-          i1=i/64
-          i2=iand(i,63)/8
-          i3=iand(i,7)
-          if(nsym.eq.1) then
-            s2(i)=abs(cs(graymap(i3),ks))
-          elseif(nsym.eq.2) then
-            s2(i)=abs(cs(graymap(i2),ks)+cs(graymap(i3),ks+1))
-          elseif(nsym.eq.3) then
+          if(nsym_actual.eq.1) then
+            i1=i
+            s2(i)=abs(cs(graymap(i1),ks))
+          elseif(nsym_actual.eq.2) then
+            i1=i/4
+            i2=iand(i,3)
+            s2(i)=abs(cs(graymap(i1),ks)+cs(graymap(i2),ks+1))
+          elseif(nsym_actual.eq.4) then
+            i1=i/64
+            i2=iand(i,63)/16
+            i3=iand(i,15)/4
+            i4=iand(i,3)
             s2(i)=abs(cs(graymap(i1),ks)+cs(graymap(i2),ks+1)+  &
-                 cs(graymap(i3),ks+2))
-          else
-            print*,"Error - nsym must be 1, 2, or 3."
+                 cs(graymap(i3),ks+2)+cs(graymap(i4),ks+3))
           endif
         enddo
         if(imetric.eq.2) s2=s2**2
-        i32=1+(k-1)*3+(ihalf-1)*87
-        if(nsym.eq.1) ibmax=2
-        if(nsym.eq.2) ibmax=5
-        if(nsym.eq.3) ibmax=8
+        i32=1+(k-1)*2+(iblock-1)*58    !Bit index into 174-bit codeword
+        if(nsym_actual.eq.1) ibmax=1
+        if(nsym_actual.eq.2) ibmax=3
+        if(nsym_actual.eq.4) ibmax=7
         do ib=0,ibmax
           bm=maxval(s2(0:nt-1),one(0:nt-1,ibmax-ib)) - &
              maxval(s2(0:nt-1),.not.one(0:nt-1,ibmax-ib))
           if(i32+ib .gt.174) cycle
-          if(nsym.eq.1) then
+          if(nsym_actual.eq.1) then
             bmeta(i32+ib)=bm
             den=max(maxval(s2(0:nt-1),one(0:nt-1,ibmax-ib)), &
                     maxval(s2(0:nt-1),.not.one(0:nt-1,ibmax-ib)))
@@ -175,9 +198,9 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
               cm=0.0
             endif
             bmetd(i32+ib)=cm
-          elseif(nsym.eq.2) then
+          elseif(nsym_actual.eq.2) then
             bmetb(i32+ib)=bm
-          elseif(nsym.eq.3) then
+          elseif(nsym_actual.eq.4) then
             bmetc(i32+ib)=bm
           endif
         enddo
@@ -226,7 +249,12 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
      Keff=91
      call decode174_91(llrz,Keff,maxosd,norder,apmask,message91,cw,  &
                        nharderrors,dmin)
-     if(nharderrors.ge.0) message77=message91(1:77)
+     if(nharderrors.ge.0) then
+! Descramble message bits with rvec
+        do i=1,77
+           message77(i)=ieor(message91(i),rvec(i))
+        enddo
+     endif
      call timer('dec174_91 ',1)
 
      msg37='                                     '
@@ -241,7 +269,7 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
      call unpack77(c77,1,msg37,unpk77_success)
      if(.not.unpk77_success) cycle
      nbadcrc=0
-     call get_ft8_tones_from_77bits(message77,itone)
+     call get_ft2libre_tones_from_77bits(message77,itone)
      if(lsubtract) then
         call timer('sub_f2l ',0)
         call subtractft2libre(dd0,itone,f1,xdt)
@@ -249,10 +277,10 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
      endif
      xsig=0.0
      xnoi=0.0
-     do i=1,79
-        xsig=xsig+s8(itone(i),i)**2
-        ios=mod(itone(i)+4,7)
-        xnoi=xnoi+s8(ios,i)**2
+     do i=1,NN
+        xsig=xsig+s4(itone(i),i)**2
+        ios=mod(itone(i)+2,4)
+        xnoi=xnoi+s4(ios,i)**2
      enddo
      xsnr=0.001
      xsnr2=0.001
@@ -265,7 +293,7 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
      if(.not.nagain) then
        xsnr=xsnr2
      endif
-     if(nsync.le.10 .and. xsnr.lt.-25.0) then
+     if(nsync.le.8 .and. xsnr.lt.-25.0) then
        nbadcrc=1
        return
      endif

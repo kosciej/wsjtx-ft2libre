@@ -1,19 +1,22 @@
 subroutine sync8d_ft2libre(cd0,i0,ctwk,itwk,sync)
 
 ! Compute sync power for a complex, downsampled FT2Libre signal.
-! Adapted from sync8d for h=0.75 modulation index and 30 samples/symbol.
+! Uses four 4-symbol Costas arrays with h=1.0 modulation index.
 
   include 'ft2libre_params.f90'
   parameter(NP2=NMAX/NDOWN)
-  parameter(NSPSD=NSPS/NDOWN)           !30 samples per symbol downsampled
+  parameter(NSPSD=NSPS/NDOWN)           !32 samples per symbol downsampled
   complex cd0(0:NP2-1)
-  complex csync(0:6,NSPSD)
+  complex csync(0:3,NSPSD)
   complex csync2(NSPSD)
   complex ctwk(NSPSD)
-  complex z1,z2,z3
+  complex z1
   logical first
-  integer icos7(0:6)
-  data icos7/3,1,4,0,6,5,2/
+  integer icos_a(0:3),icos_b(0:3),icos_c(0:3),icos_d(0:3)
+  data icos_a/0,1,3,2/
+  data icos_b/1,0,2,3/
+  data icos_c/2,3,1,0/
+  data icos_d/3,2,0,1/
   data first/.true./
   save first,twopi,csync
 
@@ -22,11 +25,11 @@ subroutine sync8d_ft2libre(cd0,i0,ctwk,itwk,sync)
 ! Set some constants and compute the csync array.
   if( first ) then
     twopi=8.0*atan(1.0)
-    do i=0,6
+    do i=0,3
       phi=0.0
-      dphi=twopi*icos7(i)*0.75/real(NSPSD)  !h=0.75 modulation index
+      dphi=twopi*i*1.0/real(NSPSD)          !h=1.0 modulation index
       do j=1,NSPSD
-        csync(i,j)=cmplx(cos(phi),sin(phi)) !Waveform for 7x7 Costas array
+        csync(i,j)=cmplx(cos(phi),sin(phi))
         phi=mod(phi+dphi,twopi)
       enddo
     enddo
@@ -34,19 +37,41 @@ subroutine sync8d_ft2libre(cd0,i0,ctwk,itwk,sync)
   endif
 
   sync=0
-  do i=0,6                              !Sum over 7 Costas frequencies and
-     i1=i0+i*NSPSD                      !three Costas arrays
-     i2=i1+36*NSPSD
-     i3=i1+72*NSPSD
-     csync2=csync(i,1:NSPSD)
-     if(itwk.eq.1) csync2=ctwk*csync2      !Tweak the frequency
+! Costas A at position 0
+  do i=0,3
+     i1=i0+i*NSPSD
+     csync2=csync(icos_a(i),1:NSPSD)
+     if(itwk.eq.1) csync2=ctwk*csync2
      z1=0.
-     z2=0.
-     z3=0.
      if(i1.ge.0 .and. i1+NSPSD-1.le.NP2-1) z1=sum(cd0(i1:i1+NSPSD-1)*conjg(csync2))
-     if(i2.ge.0 .and. i2+NSPSD-1.le.NP2-1) z2=sum(cd0(i2:i2+NSPSD-1)*conjg(csync2))
-     if(i3.ge.0 .and. i3+NSPSD-1.le.NP2-1) z3=sum(cd0(i3:i3+NSPSD-1)*conjg(csync2))
-     sync = sync + p(z1) + p(z2) + p(z3)
+     sync = sync + p(z1)
+  enddo
+! Costas B at position 33
+  do i=0,3
+     i1=i0+(33+i)*NSPSD
+     csync2=csync(icos_b(i),1:NSPSD)
+     if(itwk.eq.1) csync2=ctwk*csync2
+     z1=0.
+     if(i1.ge.0 .and. i1+NSPSD-1.le.NP2-1) z1=sum(cd0(i1:i1+NSPSD-1)*conjg(csync2))
+     sync = sync + p(z1)
+  enddo
+! Costas C at position 66
+  do i=0,3
+     i1=i0+(66+i)*NSPSD
+     csync2=csync(icos_c(i),1:NSPSD)
+     if(itwk.eq.1) csync2=ctwk*csync2
+     z1=0.
+     if(i1.ge.0 .and. i1+NSPSD-1.le.NP2-1) z1=sum(cd0(i1:i1+NSPSD-1)*conjg(csync2))
+     sync = sync + p(z1)
+  enddo
+! Costas D at position 99
+  do i=0,3
+     i1=i0+(99+i)*NSPSD
+     csync2=csync(icos_d(i),1:NSPSD)
+     if(itwk.eq.1) csync2=ctwk*csync2
+     z1=0.
+     if(i1.ge.0 .and. i1+NSPSD-1.le.NP2-1) z1=sum(cd0(i1:i1+NSPSD-1)*conjg(csync2))
+     sync = sync + p(z1)
   enddo
 
   return

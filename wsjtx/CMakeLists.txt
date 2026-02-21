@@ -591,6 +591,7 @@ set (wsjt_FSRCS
   lib/ft2libre/ft2libreb.f90
   lib/ft2libre/subtractft2libre.f90
   lib/ft2libre/gen_ft2libre_wave.f90
+  lib/ft2libre/genft2libre.f90
   lib/ft2libre/get_spectrum_baseline_ft2libre.f90
   lib/ft4/sync4d.f90
   lib/sync9.f90

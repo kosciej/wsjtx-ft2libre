@@ -3,9 +3,9 @@ subroutine sync_ft2libre(dd,npts,nfa,nfb,syncmin,nfqso,maxcand,   &
 
   include 'ft2libre_params.f90'
   parameter (MAXPRECAND=1000)
-! Maximum sync correlation lag +/- ~200ms relative to TX start time.
-! 200ms / 30ms/symbol * 4 samples/symbol ~ 27 lag steps
-  parameter (JZ=27)
+! Maximum sync correlation lag. With NSTEP=288 (1 step per symbol),
+! JZ=9 gives +/- 9*288/12000 = +/- 216 ms search range.
+  parameter (JZ=9)
   complex cx(0:NH1)
   real s(NH1,NHSYM)
   real savg(NH1)
@@ -22,8 +22,11 @@ subroutine sync_ft2libre(dd,npts,nfa,nfb,syncmin,nfqso,maxcand,   &
   integer indx(NH1)
   integer indx2(NH1)
   integer ii(1)
-  integer icos7(0:6)
-  data icos7/3,1,4,0,6,5,2/                   !Costas 7x7 tone pattern
+  integer icos_a(0:3),icos_b(0:3),icos_c(0:3),icos_d(0:3)
+  data icos_a/0,1,3,2/
+  data icos_b/1,0,2,3/
+  data icos_c/2,3,1,0/
+  data icos_d/3,2,0,1/
   equivalence (x,cx)
 
 ! Compute symbol spectra, stepping by NSTEP steps.
@@ -46,47 +49,57 @@ subroutine sync_ft2libre(dd,npts,nfa,nfb,syncmin,nfqso,maxcand,   &
   call get_spectrum_baseline_ft2libre(dd,nfa,nfb,sbase)
 
   ia=max(1,nint(nfa/df))
-  ib=nint(nfb/df)
-  nssy=NSPS/NSTEP   ! # steps per symbol
+  ib=min(nint(nfb/df), NH1-NTBIN*3)
+  nssy=NSPS/NSTEP   ! # steps per symbol (=1 with NSTEP=NSPS)
   jstrt=0.5/tstep
   candidate0=0.
   k=0
 
-! NTBIN = tone spacing in FFT bins (h=0.75, from params)
+! Correlate against four 4-symbol Costas arrays at positions 0, 33, 66, 99
   do i=ia,ib
      do j=-JZ,+JZ
         ta=0.
         tb=0.
         tc=0.
+        td=0.
         t0a=0.
         t0b=0.
         t0c=0.
-        do n=0,6
+        t0d=0.
+        do n=0,3
            m=j+jstrt+nssy*n
+! Costas A at position 0
            if(m.ge.1.and.m.le.NHSYM) then
-              ta=ta + s(i+NTBIN*icos7(n),m)
-              t0a=t0a + sum(s(i:i+NTBIN*6:NTBIN,m))
+              ta=ta + s(i+NTBIN*icos_a(n),m)
+              t0a=t0a + sum(s(i:i+NTBIN*3:NTBIN,m))
            endif
-           if(m+nssy*36.ge.1.and.m+nssy*36.le.NHSYM) then
-              tb=tb + s(i+NTBIN*icos7(n),m+nssy*36)
-              t0b=t0b + sum(s(i:i+NTBIN*6:NTBIN,m+nssy*36))
+! Costas B at position 33
+           if(m+nssy*33.ge.1.and.m+nssy*33.le.NHSYM) then
+              tb=tb + s(i+NTBIN*icos_b(n),m+nssy*33)
+              t0b=t0b + sum(s(i:i+NTBIN*3:NTBIN,m+nssy*33))
            endif
-           if(m+nssy*72.ge.1.and.m+nssy*72.le.NHSYM) then
-              tc=tc + s(i+NTBIN*icos7(n),m+nssy*72)
-              t0c=t0c + sum(s(i:i+NTBIN*6:NTBIN,m+nssy*72))
+! Costas C at position 66
+           if(m+nssy*66.ge.1.and.m+nssy*66.le.NHSYM) then
+              tc=tc + s(i+NTBIN*icos_c(n),m+nssy*66)
+              t0c=t0c + sum(s(i:i+NTBIN*3:NTBIN,m+nssy*66))
+           endif
+! Costas D at position 99
+           if(m+nssy*99.ge.1.and.m+nssy*99.le.NHSYM) then
+              td=td + s(i+NTBIN*icos_d(n),m+nssy*99)
+              t0d=t0d + sum(s(i:i+NTBIN*3:NTBIN,m+nssy*99))
            endif
         enddo
-        t=ta+tb+tc
-        t0=t0a+t0b+t0c
-        t0=(t0-t)/6.0
+        t=ta+tb+tc+td
+        t0=t0a+t0b+t0c+t0d
+        t0=(t0-t)/3.0                            !3 off-tone bins for 4 tones
         if(t0.le.0.0) cycle
-        sync_abc=t/t0
-        t=tb+tc
-        t0=t0b+t0c
-        t0=(t0-t)/6.0
+        sync_abcd=t/t0
+        t=tb+tc+td
+        t0=t0b+t0c+t0d
+        t0=(t0-t)/3.0
         if(t0.le.0.0) cycle
-        sync_bc=t/t0
-        sync2d(i,j)=max(sync_abc,sync_bc)
+        sync_bcd=t/t0
+        sync2d(i,j)=max(sync_abcd,sync_bcd)
      enddo
   enddo
 

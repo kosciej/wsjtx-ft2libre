@@ -7,7 +7,8 @@ subroutine subtractft2libre(dd0,itone,f0,dt)
 ! Complex amp      : cfilt(t) = LPF[ dd(t)*CONJG(cref(t)) ]
 ! Subtract         : dd(t)    = dd(t) - 2*REAL{cref*cfilt}
 
-  parameter (NMAX=45000,NFRAME=NMAX)
+  include 'ft2libre_params.f90'
+  parameter (NFRAME=NZ2)
   parameter (NFFT=NMAX,NFILT=600)
   real dd(NMAX),dd0(NMAX)
   real window(-NFILT/2:NFILT/2)
@@ -15,10 +16,10 @@ subroutine subtractft2libre(dd0,itone,f0,dt)
   real endcorrection(NFILT/2+1)
   complex cx(0:NFFT/2)
   complex cref,camp,cfilt,cw,z
-  integer itone(79)
+  integer itone(NN)
   logical first
   data first/.true./
-  common/heap2libre/cref(NFRAME),camp(NMAX),cfilt(NMAX),cw(NMAX)
+  common/heap2libre/cref(NZ2),camp(NMAX),cfilt(NMAX),cw(NMAX)
   equivalence (x,cx)
   save first,/heap2libre/,endcorrection
 
@@ -41,8 +42,8 @@ subroutine subtractft2libre(dd0,itone,f0,dt)
      enddo
   endif
 
-! Generate complex reference waveform cref (h=0.75 via gen_ft2libre_wave)
-  call gen_ft2libre_wave(itone,79,360,2.0,12000.0,f0,cref,xjunk,1,NFRAME)
+! Generate complex reference waveform cref (h=1.0 via gen_ft2libre_wave)
+  call gen_ft2libre_wave(itone,NN,NSPS,1.0,12000.0,f0,cref,xjunk,1,NZ2)
 
   nstart=dt*12000+1
   camp=0.

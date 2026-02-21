@@ -16,7 +16,7 @@ subroutine ft2libre_downsample(dd,newdata,f0,c)
    baud=12000.0/NSPS
    if(first) then
       bw_transition = 0.5*baud
-      bw_flat = 8*baud    ! 8-GFSK needs wider window than 4-GFSK
+      bw_flat = 4*baud    ! 4-GFSK: 4 tones * baud
       iwt = bw_transition / df
       iwf = bw_flat / df
       pi=4.0*atan(1.0)
