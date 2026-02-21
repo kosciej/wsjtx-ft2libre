@@ -115,12 +115,13 @@ The cross-reference technique (comparing two captures with different messages)
 was sound in principle but was hampered by incorrect NSPS candidates and
 alignment optimization bias.
 
-## Impact on ft2libre
+## Impact on ft2libre (original errors, now fixed)
 
-The existing `wsjtx/lib/ft2libre/` code needs to be updated:
+The existing `wsjtx/lib/ft2libre/` code was updated from wrong 8-GFSK to correct
+4-GFSK parameters:
 
-| Parameter | ft2libre (wrong) | Correct |
-|-----------|-------------------|---------|
+| Parameter | ft2libre (was wrong) | Correct |
+|-----------|----------------------|---------|
 | Modulation | 8-GFSK | 4-GFSK |
 | h | 0.75 | 1.0 |
 | NSPS | 360 | 288 |
@@ -132,3 +133,227 @@ The existing `wsjtx/lib/ft2libre/` code needs to be updated:
 | Data symbols | 58 | 87 |
 | Sync symbols | 21 | 16 |
 | Bits/symbol | 3 | 2 |
+
+These parameters were corrected in a first implementation pass. However, direct
+comparison with the decodium3 reference implementation revealed further
+incompatibilities documented below.
+
+---
+
+## ft2libre vs Decodium3: Remaining Incompatibilities
+
+Direct code comparison between our `wsjtx/lib/ft2libre/` and the reference
+`decodium3-build/lib/ft2/` implementation. These are the differences that prevent
+our decoder from being compatible with the reference FT2 encoder/decoder.
+
+### 1. NHSYM Calculation (Minor)
+
+| | ft2libre | decodium3 |
+|---|---|---|
+| Formula | `NMAX/NSTEP - 3` = 153 | `(NMAX-NFFT1)/NSTEP` = 152 |
+
+Decodium3 accounts for the FFT window length when computing the number of valid
+symbol spectra. Our formula yields one extra spectrum that may read past the
+valid audio data. **Fix**: use `(NMAX-NFFT1)/NSTEP`.
+
+### 2. Waveform Generation — Dummy Symbols (TX Incompatibility)
+
+**Our code** (`gen_ft2libre_wave.f90:46-47`) adds "dummy symbols" extending the
+first and last tone values into the ramp regions:
+
+```fortran
+! ft2libre EXTRA code — NOT in reference:
+dphi(0:2*nsps-1) = dphi(0:2*nsps-1) + dphi_peak*itone(1)*pulse(nsps+1:3*nsps)
+dphi(nsym*nsps:...) = dphi(nsym*nsps:...) + dphi_peak*itone(nsym)*pulse(1:2*nsps)
+```
+
+**Decodium3** does NOT add any dummy symbols. The ramp regions have zero frequency
+deviation (carrier only). This causes our TX waveform to have a different phase
+trajectory. While the ramp amplitude is tapered by cosine envelope, the phase
+difference propagates into the first and last data symbols.
+
+**Fix**: Remove the two dummy-symbol dphi additions entirely.
+
+### 3. Waveform Generation — BT Parameter (Minor)
+
+Our code passes `bt` as a parameter to `gen_ft2libre_wave`. Decodium3 hardcodes
+`hmod=1.0` and uses `gfsk_pulse(1.0, tt)` — BT is always 1.0.
+
+**Fix**: Hardcode BT=1.0, remove as parameter.
+
+### 4. Sync Correlation — Fundamentally Different Approach (RX Incompatibility)
+
+**Decodium3** (`sync2d.f90`):
+- Builds 4 continuous-phase reference arrays (`csynca/b/c/d`), each 2*NSS=64 samples
+- Phase accumulates continuously across all 4 symbols within each Costas array
+- Uses NSS/2=16 samples per symbol (stride-2 access: `cd0(i1:i1+4*NSS-1:2)`)
+- Applies `fac=1/(2*NSS)` scaling in the power function
+- Returns `p(z1)+p(z2)+p(z3)+p(z4)` where p = abs(z*fac) (not squared)
+
+**ft2libre** (`sync8d_ft2libre.f90`):
+- Builds per-tone reference `csync(0:3, NSPSD)` with independent phase per tone
+- Correlates each of 16 sync symbols independently (4 per Costas array)
+- Uses every sample (no stride): `cd0(i1:i1+NSPSD-1)`
+- No scaling factor in power function
+- Accumulates 16 separate p(z) values where p = |z|² (squared, not abs)
+
+The decodium3 approach gives **coherent gain** across the 4 symbols of each Costas
+array — the complex correlation sums coherently before taking magnitude. Our approach
+sums powers non-coherently (16 separate correlations). This means:
+- Different sync threshold magnitudes (not directly comparable)
+- ~6 dB worse sensitivity in our approach at weak signals
+- Different power function: decodium3 uses `abs()`, we use `|z|²`
+
+**Fix**: Rewrite sync8d_ft2libre to match sync2d exactly:
+1. Build 4 continuous-phase reference arrays of length 2*NSS
+2. Correlate with stride-2 (`cd0(i1:i1+4*NSS-1:2)`)
+3. Use `fac=1/(2*NSS)` and `p(z)=abs(z*fac)` (not squared)
+4. Sum 4 correlations (one per Costas array), not 16
+
+### 5. Candidate Search Strategy (Different Approach)
+
+**Decodium3**: Two-stage approach:
+1. `getcandidates2()` — spectral peak detection with Nuttall window, returns (freq, peak_height)
+2. For each candidate, 3-segment DT search using `sync2d()` with coarse/fine passes
+
+**ft2libre**: Single-stage `sync_ft2libre()` — combined Costas-correlation spectral
+search that returns (freq, dt, sync_quality) directly.
+
+This is an algorithmic choice that affects sensitivity but not protocol compatibility.
+The decodium3 approach has wider DT search range and more thorough frequency search.
+
+**Fix**: Replace `sync_ft2libre()` with `getcandidates2()`-style spectral peak search,
+then use `sync2d()` for fine time/frequency refinement. Or keep our approach but
+ensure the DT search range covers at least -688 to 2024 (downsampled samples).
+
+### 6. DT Search Range (RX Sensitivity)
+
+| | ft2libre | decodium3 |
+|---|---|---|
+| Range | i0-10 to i0+10 | -688 to 2024 (3 segments) |
+| Strategy | Single narrow search around initial estimate | 3-segment coarse/fine with segmented exit |
+
+**Fix**: Implement 3-segment search matching decodium3 ranges:
+- Segment 1: ibmin=216, ibmax=1120
+- Segment 2: ibmin=1120, ibmax=2024
+- Segment 3: ibmin=-688, ibmax=216
+With early exit: skip segment 2/3 if sync < 0.9 or sync < segment 1's best.
+
+### 7. Bit Metrics — Scope and Extraction (RX Incompatibility)
+
+**Decodium3** (`get_ft2_bitmetrics.f90`):
+- Computes metrics over ALL 103 symbols (including sync): `ks=1, NN-nsym+1, nsym`
+- Produces `bitmetrics(2*NN, 3)` = 206 bit positions
+- Then extracts data-only bits in `ft2_decode.f90`:
+  ```
+  llra(1:58) = bitmetrics(9:66, 1)       ! Skip sync bits 1-8
+  llra(59:116) = bitmetrics(75:132, 1)    ! Skip sync bits 67-74
+  llra(117:174) = bitmetrics(141:198, 1)  ! Skip sync bits 133-140
+  ```
+- Edge patching: `bitmetrics(205:206,2) = bitmetrics(205:206,1)` etc.
+- Additional hard sync quality check: 15/32 bits must match Gray-coded Costas
+
+**ft2libre** (`ft2libreb.f90`):
+- Computes metrics over data symbols only (3 blocks of 29)
+- Produces 174 bit metrics directly: `i32=1+(k-1)*2+(iblock-1)*58`
+- No sync quality check on hard-decoded bit metrics
+- Has 5 metric variants (a,b,c,d,e) where d=confidence-ratio, e=best-of
+
+The multi-symbol coherent integration boundaries differ. In decodium3, the 4-symbol
+integration window can span across the sync/data boundary (e.g. symbols 1-4 include
+3 sync + 1 data), giving slightly different LLR values near boundaries.
+
+**Fix**: Rewrite to match decodium3 exactly:
+1. Compute bitmetrics over all 103 symbols → 206 bit positions
+2. Apply edge patching for multi-symbol modes
+3. Extract data bits by skipping sync positions (9:66, 75:132, 141:198)
+4. Add hard sync quality check (15/32 threshold)
+5. Change metric combination to match decodium3's best-of and average
+
+### 8. Signal Subtraction (RX Incompatibility)
+
+| | ft2libre | decodium3 |
+|---|---|---|
+| nstart | `dt*12000+1` | `dt*12000+1-NSPS` |
+| NFILT | 600 | 700 |
+| End correction | Yes (cos² edge correction) | No |
+| Reference gen | `gen_ft2libre_wave(itone,NN,NSPS,1.0,12000.0,...)` | `gen_ft2wave(itone,103,NSPS,12000.0,...)` |
+| Common block | `heap2libre` | `heap2` |
+
+**nstart offset**: Decodium3 starts one full symbol (NSPS samples) earlier than we do.
+This aligns the subtraction window differently relative to the detected signal.
+
+**Fix**:
+1. Change nstart to `dt*12000+1-NSPS`
+2. Change NFILT from 600 to 700
+3. Remove end correction
+4. Match the reference waveform generation call signature
+
+### 9. AP (A Priori) Decoding — Completely Missing (RX Sensitivity)
+
+Decodium3 has full AP decoding with 6 AP types based on QSO progress state,
+contest modes (NA_VHF, EU_VHF, FIELD DAY, RTTY, WW_DIGI, FOX, HOUND), and known
+callsigns. This provides ~3-6 dB effective sensitivity gain for known QSO partners.
+
+Our ft2libre has NO AP decoding (all passes use iaptype=0, apmask=0).
+
+**Fix**: Port the full AP decoding logic from `ft2_decode.f90` lines 96-183
+(setup) and 353-426 (AP pass logic). This requires:
+- Precomputed AP bit patterns for CQ variants and known callsigns
+- rvec-scrambled AP patterns for mcq/mcqru/mcqfd/mcqtest/mcqww/mrrr/m73/mrr73
+- QSO progress state tracking (nQSOProgress 0-5)
+- nappasses and naptypes configuration tables
+
+### 10. Decoder Parameters
+
+| | ft2libre | decodium3 |
+|---|---|---|
+| max_iterations | 30 | 40 |
+| maxosd | 2 (or -1 for shallow) | 3 (or 4 near nfqso) |
+| norder/ndeep | 2 | 3 |
+| Subtraction passes | depends on lsubtract flag | 3 passes (ndepth≥2) |
+| scalefac | 2.83 | 2.83 |
+
+**Fix**: Change max_iterations to 40, maxosd to 3 (4 near nfqso), norder/ndeep to 3.
+
+### 11. DT Reporting
+
+| | ft2libre | decodium3 |
+|---|---|---|
+| Formula | `(ibest-1)*dt2` | `ibest/1333.33 - 0.5` |
+
+The -0.5 offset in decodium3 accounts for the TX delay convention.
+
+**Fix**: Use `ibest/1333.33 - 0.5`.
+
+### 12. Normalization of Downsampled Signal
+
+Decodium3 normalizes `cd2` after downsampling:
+```fortran
+sum2 = sum(cd2*conjg(cd2)) / (real(NMAX)/real(NDOWN))
+if(sum2.gt.0.0) cd2 = cd2/sqrt(sum2)
+```
+
+And again after extracting the signal region:
+```fortran
+sum2 = sum(abs(cb)**2) / (real(NSS)*NN)
+if(sum2.gt.0.0) cb = cb/sqrt(sum2)
+```
+
+Our ft2libre does not normalize after downsampling. This affects the absolute
+magnitude of sync and bit metric values.
+
+**Fix**: Add normalization after ft2libre_downsample.
+
+### Summary: Priority Order for Fixes
+
+1. **Waveform generation** (remove dummy symbols) — TX compatibility
+2. **Sync correlation** (continuous-phase, stride-2, abs not squared) — RX detection
+3. **Bit metrics** (all 103 symbols, extract data bits, edge patching) — RX decoding
+4. **Signal subtraction** (nstart-NSPS, NFILT=700, no end correction) — multi-decode
+5. **Normalization** of downsampled signal — magnitude calibration
+6. **DT search range** — wider coverage
+7. **Decoder parameters** (max_iterations=40, maxosd=3) — sensitivity
+8. **AP decoding** — sensitivity for known QSO partners
+9. **DT reporting** formula — UI display
+10. **NHSYM** formula — minor correctness
