@@ -1,0 +1,14 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Generated output plots
+output/
+output_*/
+
+# macOS
+.DS_Store
+
+# uv lock (reproducible from pyproject.toml)
+uv.lock
