@@ -1210,7 +1210,10 @@ subroutine multimode_decoder(ss,id2,params,nfsample)
      call my_ft2libre%decode(ft2libre_decoded,id2,params%nfqso,       &
           logical(params%newdat),params%nutc,params%nfa,params%nfb,   &
           params%nzhsym,params%ndepth,ncontest,                       &
-          logical(params%nagain),mycall,hiscall)
+          logical(params%nagain),mycall,hiscall,                      &
+          params%nQSOProgress,params%nftx,                            &
+          logical(params%lft8apon),logical(params%lapcqonly),         &
+          params%napwid)
      call timer('dec_f2l ',1)
      go to 800
   endif

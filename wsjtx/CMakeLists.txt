@@ -1343,6 +1343,12 @@ target_link_libraries (echosim wsjt_fort wsjt_cxx)
 add_executable (ft8sim lib/ft8/ft8sim.f90)
 target_link_libraries (ft8sim wsjt_fort wsjt_cxx)
 
+add_executable (ft2libresim lib/ft2libre/ft2libresim.f90)
+target_link_libraries (ft2libresim wsjt_fort wsjt_cxx)
+
+add_executable (ft2libre_loopback lib/ft2libre/ft2libre_loopback.f90)
+target_link_libraries (ft2libre_loopback wsjt_fort wsjt_cxx)
+
 add_executable (sfoxsim lib/superfox/sfoxsim.f90)
 target_link_libraries (sfoxsim wsjt_fort wsjt_cxx)
 

@@ -9,11 +9,10 @@ subroutine subtractft2libre(dd0,itone,f0,dt)
 
   include 'ft2libre_params.f90'
   parameter (NFRAME=NZ2)
-  parameter (NFFT=NMAX,NFILT=600)
+  parameter (NFFT=NMAX,NFILT=700)
   real dd(NMAX),dd0(NMAX)
   real window(-NFILT/2:NFILT/2)
   real x(NFFT+2)
-  real endcorrection(NFILT/2+1)
   complex cx(0:NFFT/2)
   complex cref,camp,cfilt,cw,z
   integer itone(NN)
@@ -21,7 +20,7 @@ subroutine subtractft2libre(dd0,itone,f0,dt)
   data first/.true./
   common/heap2libre/cref(NZ2),camp(NMAX),cfilt(NMAX),cw(NMAX)
   equivalence (x,cx)
-  save first,/heap2libre/,endcorrection
+  save first,/heap2libre/
 
   if(first) then                         ! Create and normalize the filter
      pi=4.0*atan(1.0)
@@ -37,15 +36,12 @@ subroutine subtractft2libre(dd0,itone,f0,dt)
      call four2a(cw,nfft,1,-1,1)
      cw=cw*fac
      first=.false.
-     do j=1,NFILT/2+1
-       endcorrection(j)=1.0/(1.0-sum(window(j-1:NFILT/2))/sumw)
-     enddo
   endif
 
 ! Generate complex reference waveform cref (h=1.0 via gen_ft2libre_wave)
   call gen_ft2libre_wave(itone,NN,NSPS,1.0,12000.0,f0,cref,xjunk,1,NZ2)
 
-  nstart=dt*12000+1
+  nstart=dt*12000+1-NSPS
   camp=0.
   dd=dd0
   do i=1,nframe
@@ -58,8 +54,6 @@ subroutine subtractft2libre(dd0,itone,f0,dt)
   call four2a(cfilt,nfft,1,-1,1)
   cfilt(1:nfft)=cfilt(1:nfft)*cw(1:nfft)
   call four2a(cfilt,nfft,1,1,1)
-  cfilt(1:NFILT/2+1)=cfilt(1:NFILT/2+1)*endcorrection
-  cfilt(nframe:nframe-NFILT/2:-1)=cfilt(nframe:nframe-NFILT/2:-1)*endcorrection
 
   do i=1,nframe
      j=nstart+i-1

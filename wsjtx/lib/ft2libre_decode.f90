@@ -24,7 +24,8 @@ module ft2libre_decode
 contains
 
   subroutine decode(this,callback,iwave,nfqso,newdat,nutc,nfa,nfb,   &
-       nzhsym,ndepth,ncontest,nagain,mycall12,hiscall12)
+       nzhsym,ndepth,ncontest,nagain,mycall12,hiscall12,              &
+       nQSOProgress,nftx,lapon,lapcqonly,napwid)
 
     use timer_module, only: timer
 
@@ -37,14 +38,18 @@ contains
     real candidate(3,MAXCAND)
     real dd(NPTS)
     logical, intent(in) :: nagain
-    logical newdat,lsubtract
+    logical newdat,lsubtract,lapon,lapcqonly
     character*12 mycall12,hiscall12
     integer*2 iwave(NPTS)
+    integer nQSOProgress,nftx,napwid
     character*37 msg37
     character*37 allmessages(MAX_DECODES)
     integer allsnrs(MAX_DECODES)
     integer itone(NN)
     logical ldupe
+    real rms_dd
+
+    save ndecodes,allmessages,allsnrs
 
     this%callback => callback
 
@@ -52,6 +57,13 @@ contains
     ndecodes=0
     allmessages='                                     '
     allsnrs=0
+
+    open(73,file='/tmp/ft2l_debug.log',status='unknown',              &
+         position='append',action='write')
+    rms_dd=sqrt(sum(dd**2)/NPTS)
+    write(73,'(A,I6.6,A,F10.1,A,I6,A,I6)') '=== FT2L decode UTC=',  &
+         nutc,' rms=',rms_dd,' nfa=',nfa,' nfb=',nfb
+    flush(73)
 
     ifa=nfa
     ifb=nfb
@@ -78,29 +90,54 @@ contains
         if(ndecodes.eq.0) cycle
         lsubtract=.true.
       endif
+      write(73,'(A,I2,A,I4)') 'FT2L: pass_start ipass=',ipass,        &
+           ' ndecodes=',ndecodes
+      flush(73)
       call timer('syn_f2l ',0)
       maxc=MAXCAND
       call sync_ft2libre(dd,NPTS,ifa,ifb,syncmin,nfqso,maxc,         &
            candidate,ncand,sbase)
       call timer('syn_f2l ',1)
+      write(73,'(A,I2,A,I4)') 'FT2L: post_sync ipass=',ipass,        &
+           ' ndecodes=',ndecodes
+      write(73,'(A,I2,A,I2,A,I4,A,I6,A,I6)') 'FT2L: pass=',ipass,  &
+           ' metric=',imetric,' ncand=',ncand,' ifa=',ifa,' ifb=',ifb
+      do icand=1,min(ncand,10)
+        write(73,'(A,I3,A,F8.1,A,F8.3,A,F8.3)') 'FT2L: cand',icand, &
+             ' f1=',candidate(1,icand),' xdt=',candidate(2,icand),   &
+             ' sync=',candidate(3,icand)
+      enddo
+      flush(73)
       do icand=1,ncand
         sync=candidate(3,icand)
         f1=candidate(1,icand)
         xdt=candidate(2,icand)
         xbase=10.0**(0.1*(sbase(nint(f1/(12000.0/NFFT1)))-40.0))
         msg37='                                     '
+        iaptype=0
         call timer('f2libreb',0)
         call ft2libreb(dd,newdat,nfqso,ndepth,nzhsym,lsubtract,      &
              nagain,ncontest,imetric,f1,xdt,xbase,nharderrors,dmin,   &
-             nbadcrc,iappass,msg37,xsnr,itone)
+             nbadcrc,iaptype,msg37,xsnr,itone,mycall12,hiscall12,    &
+             nQSOProgress,nftx,lapon,lapcqonly,napwid)
         call timer('f2libreb',1)
         nsnr=nint(xsnr)
-        xdt=xdt-0.5
         if(nbadcrc.eq.0) then
            ldupe=.false.
            do id=1,ndecodes
               if(msg37.eq.allmessages(id)) ldupe=.true.
            enddo
+           write(73,'(A,I2,A,I3,A,L1,A,I3,A,A37)') 'FT2L: DECODED pass=', &
+                ipass,' cand=',icand,' dupe=',ldupe,' ap=',iaptype,        &
+                ' msg=',msg37
+           if(.not.ldupe .and. ndecodes.gt.0) then
+              write(73,'(A,I4)') 'FT2L: DUPE_MISS ndecodes=',ndecodes
+              write(73,'(A,20I4)') 'FT2L: msg   =',                       &
+                   (ichar(msg37(k:k)),k=1,20)
+              write(73,'(A,20I4)') 'FT2L: stored=',                        &
+                   (ichar(allmessages(1)(k:k)),k=1,20)
+              flush(73)
+           endif
            if(.not.ldupe) then
               if(ndecodes.ge.MAX_DECODES) cycle
               ndecodes=ndecodes+1
@@ -108,14 +145,18 @@ contains
               allsnrs(ndecodes)=nsnr
            endif
            if(.not.ldupe .and. associated(this%callback)) then
-              iaptype=0
               qual=1.0-(nharderrors+dmin)/60.0
               call this%callback(sync,nsnr,xdt,f1,msg37,iaptype,qual)
+              write(73,'(A)') 'FT2L: callback fired'
            endif
+           flush(73)
         endif
       enddo  ! icand
     enddo  ! ipass
 
+    write(73,'(A,I4)') 'FT2L: total decodes=',ndecodes
+    flush(73)
+    close(73)
     return
   end subroutine decode
 

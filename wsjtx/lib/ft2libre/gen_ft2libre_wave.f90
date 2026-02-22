@@ -15,8 +15,8 @@ subroutine gen_ft2libre_wave(itone,nsym,nsps,bt,fsample,f0,cwave,wave,icmplx,nwa
   data fchk0/0.0/
   save pulse,twopi,dt,hmod,fchk0,ctab
 
-  ibt=nint(10*bt)
-  fchk=nsym+nsps+bt+fsample
+  ibt=nint(10*1.0)
+  fchk=nsym+nsps+1.0+fsample
   if(fchk.ne.fchk0) then
      twopi=8.0*atan(1.0)
      dt=1.0/fsample
@@ -24,7 +24,7 @@ subroutine gen_ft2libre_wave(itone,nsym,nsps,bt,fsample,f0,cwave,wave,icmplx,nwa
 ! Compute the frequency-smoothing pulse
      do i=1,3*nsps
         tt=(i-1.5*nsps)/real(nsps)
-        pulse(i)=gfsk_pulse(bt,tt)
+        pulse(i)=gfsk_pulse(1.0,tt)
      enddo
      do i=0,NTAB-1
         phi=i*twopi/NTAB
@@ -42,9 +42,7 @@ subroutine gen_ft2libre_wave(itone,nsym,nsps,bt,fsample,f0,cwave,wave,icmplx,nwa
      ie=ib+3*nsps-1
      dphi(ib:ie) = dphi(ib:ie) + dphi_peak*pulse(1:3*nsps)*itone(j)
   enddo
-! Add dummy symbols at beginning and end with tone values equal to 1st and last symbol
-  dphi(0:2*nsps-1)=dphi(0:2*nsps-1)+dphi_peak*itone(1)*pulse(nsps+1:3*nsps)
-  dphi(nsym*nsps:(nsym+2)*nsps-1)=dphi(nsym*nsps:(nsym+2)*nsps-1)+dphi_peak*itone(nsym)*pulse(1:2*nsps)
+! No dummy symbols in ramp regions — ramps carry carrier only (matching decodium3)
 
 ! Calculate and insert the audio waveform
 ! Output includes ramp-up and ramp-down symbols: nwave = (nsym+2)*nsps
