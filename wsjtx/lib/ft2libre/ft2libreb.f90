@@ -10,7 +10,7 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
   parameter(NP2=NMAX/NDOWN)
   parameter(NSS=NSPS/NDOWN)            !32 samples per symbol downsampled
   parameter(NSYNC=2*NSS)               !64 samples for sync reference arrays
-  parameter(NFFT_SYM=32)               !FFT size for soft symbols (= NSS)
+  parameter(NFFT_SYM=40)               !FFT size for soft symbols (h=0.8: 40pt, df=baud*h)
   character*37 msg37
   character*77 c77
   character*12 mycall12,hiscall12
@@ -261,7 +261,7 @@ subroutine ft2libreb(dd0,newdat,nfqso,ndepth,nzhsym,lsubtract,nagain, &
 ! normalization above is sufficient. Region-only normalization
 ! reduces effective SNR by normalizing out the signal power.
 
-! Extract soft symbols using FFT (NFFT_SYM = NSS = 32)
+! Extract soft symbols using zero-padded FFT (NFFT_SYM=40, NSS=32)
   do k=1,NN
     i1=ibest+(k-1)*NSS
     csymb=cmplx(0.0,0.0)

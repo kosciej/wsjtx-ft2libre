@@ -1,7 +1,7 @@
 subroutine gen_ft2libre_wave(itone,nsym,nsps,bt,fsample,f0,cwave,wave,icmplx,nwave)
 !
 ! Generate FT2Libre waveform using Gaussian-filtered frequency pulses.
-! 4-GFSK modulation with h=1.0.
+! 4-GFSK modulation with h=0.8.
 ! Input:  itone(nsym) = channel symbols (103 sync+data)
 ! Output: wave/cwave of length nwave = (nsym+2)*nsps including ramp symbols
 !
@@ -20,7 +20,7 @@ subroutine gen_ft2libre_wave(itone,nsym,nsps,bt,fsample,f0,cwave,wave,icmplx,nwa
   if(fchk.ne.fchk0) then
      twopi=8.0*atan(1.0)
      dt=1.0/fsample
-     hmod=1.0
+     hmod=0.8
 ! Compute the frequency-smoothing pulse
      do i=1,3*nsps
         tt=(i-1.5*nsps)/real(nsps)

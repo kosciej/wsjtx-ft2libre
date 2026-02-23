@@ -28,7 +28,8 @@
       "Bash(git add:*)",
       "Bash(gh api:*)",
       "mcp__plugin_serena_serena__list_memories",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(./ft2libre_loopback:*)"
     ]
   }
 }

@@ -1,7 +1,7 @@
 subroutine sync8d_ft2libre(cd0,i0,ctwk,itwk,sync)
 
 ! Compute sync power for a complex, downsampled FT2Libre signal.
-! Uses four 4-symbol Costas arrays with h=1.0 modulation index.
+! Uses four 4-symbol Costas arrays with h=0.8 modulation index.
 ! Matches decodium3 sync2d approach: continuous-phase coherent correlation
 ! across all 4 symbols of each Costas array, stride-2 access, abs (not squared).
 
@@ -34,7 +34,7 @@ subroutine sync8d_ft2libre(cd0,i0,ctwk,itwk,sync)
     ! Costas A
     k=1; phi=0.0
     do i=0,3
-      dphi=2.0*twopi*icos_a(i)/real(NSS)
+      dphi=2.0*twopi*0.8*icos_a(i)/real(NSS)
       do j=1,NSS/2
         csynca(k)=cmplx(cos(phi),sin(phi))
         phi=mod(phi+dphi,twopi)
@@ -45,7 +45,7 @@ subroutine sync8d_ft2libre(cd0,i0,ctwk,itwk,sync)
     ! Costas B
     k=1; phi=0.0
     do i=0,3
-      dphi=2.0*twopi*icos_b(i)/real(NSS)
+      dphi=2.0*twopi*0.8*icos_b(i)/real(NSS)
       do j=1,NSS/2
         csyncb(k)=cmplx(cos(phi),sin(phi))
         phi=mod(phi+dphi,twopi)
@@ -56,7 +56,7 @@ subroutine sync8d_ft2libre(cd0,i0,ctwk,itwk,sync)
     ! Costas C
     k=1; phi=0.0
     do i=0,3
-      dphi=2.0*twopi*icos_c(i)/real(NSS)
+      dphi=2.0*twopi*0.8*icos_c(i)/real(NSS)
       do j=1,NSS/2
         csyncc(k)=cmplx(cos(phi),sin(phi))
         phi=mod(phi+dphi,twopi)
@@ -67,7 +67,7 @@ subroutine sync8d_ft2libre(cd0,i0,ctwk,itwk,sync)
     ! Costas D
     k=1; phi=0.0
     do i=0,3
-      dphi=2.0*twopi*icos_d(i)/real(NSS)
+      dphi=2.0*twopi*0.8*icos_d(i)/real(NSS)
       do j=1,NSS/2
         csyncd(k)=cmplx(cos(phi),sin(phi))
         phi=mod(phi+dphi,twopi)

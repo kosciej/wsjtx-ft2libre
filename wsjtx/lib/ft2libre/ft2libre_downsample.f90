@@ -16,7 +16,7 @@ subroutine ft2libre_downsample(dd,newdata,f0,c)
    baud=12000.0/NSPS
    if(first) then
       bw_transition = 0.5*baud
-      bw_flat = 4*baud    ! 4-GFSK: 4 tones * baud
+      bw_flat = 3.4*baud   ! 4-GFSK h=0.8: 3*0.8+1 = 3.4 baud
       iwt = bw_transition / df
       iwf = bw_flat / df
       pi=4.0*atan(1.0)

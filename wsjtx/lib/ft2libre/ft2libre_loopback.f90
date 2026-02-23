@@ -67,6 +67,7 @@ program ft2libre_loopback
 
      ngood=0
      do itrial=1,ntrials
+        write(*,'(A,I4)') 'DBG: loop start itrial=',itrial
         ! Place waveform in audio buffer at ~0.5s offset
         dd=0.0
         nstart=nint(0.5*fs)+1
@@ -74,6 +75,7 @@ program ft2libre_loopback
            j=nstart+i-1
            if(j.ge.1.and.j.le.NMAX) dd(j)=sig*aimag(cwave(i))
         enddo
+        write(*,'(A,I4)') 'DBG: after waveform itrial=',itrial
 
         ! Add noise
         if(snrdb.lt.90) then
@@ -81,6 +83,7 @@ program ft2libre_loopback
               dd(i)=dd(i)+gran()
            enddo
         endif
+        write(*,'(A,I4)') 'DBG: after noise itrial=',itrial
 
         ! Sync search
         nfa=200
@@ -88,8 +91,10 @@ program ft2libre_loopback
         nfqso=nint(f0)
         syncmin=1.3
         maxc=MAXCAND
+        write(*,'(A,I4)') 'DBG: before sync itrial=',itrial
         call sync_ft2libre(dd,NMAX,nfa,nfb,syncmin,nfqso,maxc, &
              candidate,ncand,sbase)
+        write(*,'(A,I4,A,I4)') 'DBG: after sync itrial=',itrial,' ncand=',ncand
 
         ! Try decoding each candidate
         mycall12='K1ABC       '
