@@ -1481,6 +1481,7 @@ void TCITransceiver::do_modulator_start (QString mode, unsigned symbolsLength, d
   if((mode=="FT8" and m_nsps==1024)) delay_ms=400;            //SuperFox Qary Polar Code transmission
   if(mode=="Q65" and m_nsps<=3600) delay_ms=500;              //Q65-15 and Q65-30
   if(mode=="FT4") delay_ms=300;                               //FT4
+  if(mode=="FT2L") delay_ms=300;                               //FT2L
 
   // noise generator parameters
   if (m_addNoise) {

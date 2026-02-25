@@ -352,6 +352,7 @@ set (wsjt_FSRCS
   lib/jt65_mod6.f90 #ft8md
   lib/ft8_decode.f90
   lib/ft4_decode.f90
+  lib/ft2l_decode.f90
   lib/fst4_decode.f90
   lib/get_q3list.f90
   lib/jt9_decode.f90
@@ -390,6 +391,7 @@ set (wsjt_FSRCS
   lib/azdist.f90
   lib/ft8/baseline.f90
   lib/ft4/ft4_baseline.f90
+  lib/ft2l/ft2l_baseline.f90
   lib/blanker.f90
   lib/bpdecode40.f90
   lib/bpdecode128_90.f90
@@ -406,6 +408,7 @@ set (wsjt_FSRCS
   lib/chkmsg.f90
   lib/chkss2.f90
   lib/ft4/clockit.f90
+  lib/ft2l/clockit.f90
   lib/ft8/compress.f90
   lib/coord.f90
   lib/db.f90
@@ -481,6 +484,9 @@ set (wsjt_FSRCS
   lib/ft4/ft4code.f90
   lib/ft4/genft4.f90
   lib/ft4/gen_ft4wave.f90
+  lib/ft2l/ft2lcode.f90
+  lib/ft2l/genft2l.f90
+  lib/ft2l/gen_ft2lwave.f90
   lib/ft8/gen_ft8wave.f90
   lib/ft8/genft8refsig.f90
   lib/genwspr.f90
@@ -533,6 +539,9 @@ set (wsjt_FSRCS
   lib/ft4/ft4sim.f90
   lib/ft4/ft4sim_mult.f90
   lib/ft4/ft4_downsample.f90
+  lib/ft2l/ft2lsim.f90
+  lib/ft2l/ft2lsim_mult.f90
+  lib/ft2l/ft2l_downsample.f90
   lib/77bit/my_hash.f90
   lib/wsprd/osdwspr.f90
   lib/ft8/osd174_91.f90
@@ -574,6 +583,7 @@ set (wsjt_FSRCS
   lib/subtract65.f90
   lib/ft8/subtractft8.f90
   lib/ft4/subtractft4.f90
+  lib/ft2l/subtractft2l.f90
   lib/sun.f90
   lib/symspec.f90
   lib/symspec2.f90
@@ -582,9 +592,12 @@ set (wsjt_FSRCS
   lib/sync65.f90
   lib/ft4/getcandidates4.f90
   lib/ft4/get_ft4_bitmetrics.f90
+  lib/ft2l/getcandidates2l.f90
+  lib/ft2l/get_ft2l_bitmetrics.f90
   lib/ft8/sync8.f90
   lib/ft8/sync8d.f90
   lib/ft4/sync4d.f90
+  lib/ft2l/sync2ld.f90
   lib/sync9.f90
   lib/sync9f.f90
   lib/sync9w.f90
@@ -1128,6 +1141,8 @@ endif (Fortran_COMPILER_NAME MATCHES "gfortran.*")
 if (NOT APPLE)
   set (CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
   set (CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL} -Wl,--gc-sections")
+else (NOT APPLE)
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
 endif (NOT APPLE)
 
 
@@ -1328,6 +1343,9 @@ target_link_libraries (ft8code wsjt_fort wsjt_cxx)
 add_executable (ft4code lib/ft4/ft4code.f90)
 target_link_libraries (ft4code wsjt_fort wsjt_cxx)
 
+add_executable (ft2lcode lib/ft2l/ft2lcode.f90)
+target_link_libraries (ft2lcode wsjt_fort wsjt_cxx)
+
 add_executable (echosim lib/echosim.f90)
 target_link_libraries (echosim wsjt_fort wsjt_cxx)
 
@@ -1348,6 +1366,9 @@ target_link_libraries (msk144sim wsjt_fort wsjt_cxx)
 
 add_executable (ft4sim lib/ft4/ft4sim.f90)
 target_link_libraries (ft4sim wsjt_fort wsjt_cxx)
+
+add_executable (ft2lsim lib/ft2l/ft2lsim.f90)
+target_link_libraries (ft2lsim wsjt_fort wsjt_cxx)
 
 add_executable (ft4sim_mult lib/ft4/ft4sim_mult.f90)
 target_link_libraries (ft4sim_mult wsjt_fort wsjt_cxx)
@@ -1381,9 +1402,9 @@ generate_version_info (wsprd_VERSION_RESOURCES
   ICON ${WSJTX_ICON_FILE}
   FILE_DESCRIPTION "WSPR mode decoder"
   )
-add_executable (wsprd ${wsprd_CSRCS} lib/indexx.f90 lib/wsprd/osdwspr.f90 ${wsprd_VERSION_RESOURCES})
-target_include_directories (wsprd PRIVATE ${FFTW3_INCLUDE_DIRS})
-target_link_libraries (wsprd ${FFTW3_LIBRARIES} ${LIBM_LIBRARIES})
+# add_executable (wsprd ${wsprd_CSRCS} lib/indexx.f90 lib/wsprd/osdwspr.f90 ${wsprd_VERSION_RESOURCES})
+# target_include_directories (wsprd PRIVATE ${FFTW3_INCLUDE_DIRS})
+# target_link_libraries (wsprd ${FFTW3_LIBRARIES} ${LIBM_LIBRARIES})
 
 # Tell CMake to run moc when necessary
 set (CMAKE_AUTOMOC ON)
@@ -1731,7 +1752,7 @@ install (TARGETS udp_daemon message_aggregator wsjtx_app_version
   BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT runtime
   )
 
-install (TARGETS jt9 wsprd fmtave fcal fmeasure
+install (TARGETS jt9 fmtave fcal fmeasure
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT runtime
   BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT runtime
   )
@@ -1856,7 +1877,7 @@ add_custom_target (revisiontag
 # once per build
 add_dependencies (wsjt_qt revisiontag)
 add_dependencies (jt9 revisiontag)
-add_dependencies (wsprd revisiontag)
+# add_dependencies (wsprd revisiontag)
 
 
 #

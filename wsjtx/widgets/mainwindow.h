@@ -59,6 +59,7 @@
 #define NUM_FT8_SYMBOLS 79
 #define NUM_SUPERFOX_SYMBOLS 153
 #define NUM_FT4_SYMBOLS 105
+#define NUM_FT2L_SYMBOLS 105
 #define NUM_FST4_SYMBOLS 160             //240/2 data + 5*8 sync
 #define NUM_CW_SYMBOLS 250
 #define MAX_NUM_SYMBOLS 250
@@ -195,6 +196,7 @@ private slots:
   void on_cbHoldTxFreq_clicked (bool);
   void on_ft8Button_clicked();
   void on_ft4Button_clicked();
+  void on_ft2lButton_clicked();
   void on_msk144Button_clicked();
   void on_q65Button_clicked();
   void on_jt65Button_clicked();
@@ -298,6 +300,7 @@ private slots:
   void on_actionJT65_triggered();
   void on_actionJT4_triggered();
   void on_actionFT4_triggered();
+  void on_actionFT2L_triggered();
   void on_actionFT8_triggered();
   void on_actionFST4_triggered();
   void on_actionFST4W_triggered();
@@ -500,6 +503,7 @@ private:
   void foxTest();
   void setColorHighlighting();
   void chkFT4();
+  void chkFT2L();
   bool elide_tx1_not_allowed () const;
   void readWidebandDecodes();
   void configActiveStations();
@@ -612,6 +616,7 @@ private:
   qint32  m_ft8DecoderStart;
   qint32  m_nsecBandChanged;
   qint32  m_nFT4depth;
+  qint32  m_nFT2Ldepth;
   //ft8md
 
   qint32  m_sec0;

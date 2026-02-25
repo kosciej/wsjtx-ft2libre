@@ -3260,6 +3260,86 @@ Double-click to reset to the standard 73 message</string>
                            </property>
                           </widget>
                          </item>
+                         <item row="8" column="3">
+                          <widget class="QCheckBox" name="cb10mFT2L">
+                           <property name="toolTip">
+                            <string>10m FT2L</string>
+                           </property>
+                           <property name="text">
+                            <string>10m FT2L</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="7" column="3">
+                          <widget class="QCheckBox" name="cb12mFT2L">
+                           <property name="toolTip">
+                            <string>12m FT2L</string>
+                           </property>
+                           <property name="text">
+                            <string>12m FT2L</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="6" column="3">
+                          <widget class="QCheckBox" name="cb15mFT2L">
+                           <property name="toolTip">
+                            <string>15m FT2L</string>
+                           </property>
+                           <property name="text">
+                            <string>15m FT2L</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="5" column="3">
+                          <widget class="QCheckBox" name="cb17mFT2L">
+                           <property name="toolTip">
+                            <string>17m FT2L</string>
+                           </property>
+                           <property name="text">
+                            <string>17m FT2L</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="3">
+                          <widget class="QCheckBox" name="cb20mFT2L">
+                           <property name="toolTip">
+                            <string>20m FT2L</string>
+                           </property>
+                           <property name="text">
+                            <string>20m FT2L</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="3">
+                          <widget class="QCheckBox" name="cb30mFT2L">
+                           <property name="toolTip">
+                            <string>30m FT2L</string>
+                           </property>
+                           <property name="text">
+                            <string>30m FT2L</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="3">
+                          <widget class="QCheckBox" name="cb40mFT2L">
+                           <property name="toolTip">
+                            <string>40m FT2L</string>
+                           </property>
+                           <property name="text">
+                            <string>40m FT2L</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="3">
+                          <widget class="QCheckBox" name="cb80mFT2L">
+                           <property name="toolTip">
+                            <string>80m FT2L</string>
+                           </property>
+                           <property name="text">
+                            <string>80m FT2L</string>
+                           </property>
+                          </widget>
+                         </item>
                         </layout>
                        </widget>
                       </item>
@@ -4456,6 +4536,28 @@ QLabel[oob=&quot;true&quot;] {
             </widget>
            </item>
            <item>
+            <widget class="QPushButton" name="ft2lButton">
+             <property name="minimumSize">
+              <size>
+               <width>32</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="toolTip">
+              <string>Switch to FT2L mode</string>
+             </property>
+             <property name="text">
+              <string>FT2L</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QPushButton" name="msk144Button">
              <property name="minimumSize">
               <size>
@@ -4910,6 +5012,7 @@ QPushButton[state=&quot;ok&quot;] {
     </property>
     <addaction name="actionFST4"/>
     <addaction name="actionFT4"/>
+    <addaction name="actionFT2L"/>
     <addaction name="actionFT8"/>
     <addaction name="actionJT4"/>
     <addaction name="actionJT9"/>
@@ -5394,6 +5497,14 @@ QPushButton[state=&quot;ok&quot;] {
    </property>
    <property name="text">
     <string>FT4</string>
+   </property>
+  </action>
+  <action name="actionFT2L">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>FT2L</string>
    </property>
   </action>
   <action name="actionFST4">
