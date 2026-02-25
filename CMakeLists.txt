@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.8.10 FATAL_ERROR)
+cmake_minimum_required (VERSION 3.5 FATAL_ERROR)
 
 project (wsjt-superbuild)
 
@@ -166,13 +166,23 @@ ExternalProject_Add (wsjtx
   GIT_REPOSITORY ${wsjtx_repo}
   GIT_TAG ${WSJTX_TAG}
   GIT_SHALLOW False
-  URL ${CMAKE_CURRENT_SOURCE_DIR}/src/wsjtx.tgz
-  URL_HASH MD5=${wsjtx_md5sum}
-  PATCH_COMMAND ${PATCH_EXECUTABLE} -p1 -N < ${CMAKE_CURRENT_SOURCE_DIR}/wsjtx.patch
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/wsjtx
   CMAKE_ARGS
   ${CMAKE_ARGS}
   -DCMAKE_PREFIX_PATH=${INSTALL_DIR}
+  -DQt5_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5
+  -DQt5Test_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Test
+  -DQt5Widgets_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Widgets
+  -DQt5Gui_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Gui
+  -DQt5Core_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Core
+  -DQt5Network_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Network
+  -DQt5PrintSupport_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5PrintSupport
+  -DQt5Sql_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Sql
+  -DQt5Svg_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Svg
+  -DQt5Multimedia_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Multimedia
   -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+  -DWSJT_GENERATE_DOCS=OFF
+  -DWSJT_SKIP_MANPAGES=ON
   ${WSJTX_EXTRA_CMAKE_OPTIONS}
   INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
   STEP_TARGETS update configure build install package
@@ -195,9 +205,9 @@ add_dependencies (wsjtx-install hamlib-install)
 add_dependencies (wsjtx-package hamlib-install)
 
 # export traditional targets
-add_custom_target (build ALL DEPENDS wsjtx-build)
-add_custom_target (install DEPENDS wsjtx-install)
-add_custom_target (package DEPENDS wsjtx-package)
+add_custom_target (superbuild ALL DEPENDS wsjtx-build)
+add_custom_target (superinstall DEPENDS wsjtx-install)
+add_custom_target (superpackage DEPENDS wsjtx-package)
 
 
 #

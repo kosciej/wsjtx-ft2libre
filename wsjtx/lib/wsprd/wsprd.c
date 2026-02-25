@@ -37,6 +37,10 @@
 #include <fftw3.h>
 #include <errno.h>
 
+#ifdef WIN32
+#include <mingw/math.h>
+#endif
+
 #include "fano.h"
 #include "jelinek.h"
 #include "nhash.h"
@@ -590,7 +594,8 @@ void subtract_signal2(float *id, float *qd, long np,
         }
     }
 
-    float w[nfilt], norm=0, partialsum[nfilt]; 
+    float *w = calloc(nfilt, sizeof(float));
+    float *partialsum = calloc(nfilt, sizeof(float));
     //lowpass filter and remove startup transient
     for (i=0; i<nfilt; i++) partialsum[i]=0.0;
     for (i=0; i<nfilt; i++) {
@@ -646,6 +651,8 @@ void subtract_signal2(float *id, float *qd, long np,
         }
     }
     
+    free(w);
+    free(partialsum);
     free(refi);
     free(refq);
     free(ci);
