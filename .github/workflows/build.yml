@@ -1,10 +1,6 @@
 name: Build and Release WSJT-X
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
   workflow_dispatch:
     inputs:
       create_release:
