@@ -115,7 +115,6 @@ jobs:
             mingw-w64-x86_64-fftw
             mingw-w64-x86_64-libusb
             mingw-w64-x86_64-boost
-            mingw-w64-x86_64-ninja
             patch git make
 
       - name: Build and Package
@@ -123,7 +122,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -GNinja -DWSJT_GENERATE_DOCS=OFF -DWSJT_SKIP_MANPAGES=ON
+          cmake .. -G "Unix Makefiles" -DWSJT_GENERATE_DOCS=OFF -DWSJT_SKIP_MANPAGES=ON
           cmake --build . --target superpackage --parallel $(nproc)
 
       - name: Locate Package

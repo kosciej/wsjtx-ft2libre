@@ -186,7 +186,7 @@ ExternalProject_Add (wsjtx
   -DQt5Multimedia_DIR=${Qt5Multimedia_DIR}
   -DQt5SerialPort_DIR=${Qt5SerialPort_DIR}
   -DQt5WebSockets_DIR=${Qt5WebSockets_DIR}
-  -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+  -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
   -DWSJT_GENERATE_DOCS=OFF
   -DWSJT_SKIP_MANPAGES=ON
   ${WSJTX_EXTRA_CMAKE_OPTIONS}
@@ -197,7 +197,7 @@ ExternalProject_Add_Step (wsjtx package
   COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target package
   COMMAND echo "Built hamlib from branch/tag: ${hamlib_TAG}"
   COMMAND echo "Built WSJT-X from: ${WSJTX_TAG}"
-  COMMAND echo "Package(s) generated in ${BINARY_DIR}."
+  COMMAND echo "Package(s) generated in <BINARY_DIR>."
   COMMENT "Generating WSJT-X package."
   DEPENDEES build
   )
