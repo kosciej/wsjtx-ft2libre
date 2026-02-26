@@ -15,10 +15,8 @@ program jt9
 
   include 'jt9com.f90'
 
-  integer*2 id2a(180000)
   integer(C_INT) iret
   type(wav_header) wav
-  real*4 s(NSMAX)
   real*8 TRperiod
   character c
   character(len=500) optarg, infile
@@ -28,10 +26,9 @@ program jt9
        fhigh=4000,nrxfreq=1500,ndepth=1,nexp_decode=0,nQSOProg=0,ncycles=3,  &
        nft8rxfsens=3,nmt=0,nmtft8decsens=3,ndecoderstart=3
   logical :: read_files = .true., tx9 = .false., display_help = .false.,     &
-       bLowSidelobes = .false., nexp_decode_set = .false.,                   &
-       have_ntol = .false.,multift8 = .false.,hidedupes = .false.,           &
-       lft8lowth = .true.,lft8subpass = .true.,lwidedxcsearch = .true.
-  type (option) :: long_options(41) = [                                      &
+       nexp_decode_set = .false., have_ntol = .false., multift8 = .false.,   &
+       hidedupes = .false.
+  type (option) :: long_options(42) = [                                      &
     option ('help', .false., 'h', 'Display this help message', ''),          &
     option ('shmem',.true.,'s','Use shared memory for sample data','KEY'),   &
     option ('tr-period', .true., 'p', 'Tx/Rx period, default SECONDS=60',    &
@@ -81,6 +78,7 @@ program jt9
         'SKIP MTft8 Wideband DX Call Search', ''),                           &        
     option ('q65', .false., '3', 'Q65 mode', ''),                            &
     option ('jt4', .false., '4', 'JT4 mode', ''),                            &
+    option ('ft2l', .false., '2', 'FT2L mode', ''),                          &
     option ('ft4', .false., '5', 'FT4 mode', ''),                            &
     option ('jt65', .false.,'6', 'JT65 mode', ''),                           &
     option ('fst4', .false., '7', 'FST4 mode', ''),                          &
@@ -105,7 +103,6 @@ program jt9
         'FLAGS') ]
 
   type(dec_data), allocatable :: shared_data
-  character(len=20) :: datetime=''
   character(len=12) :: mycall='K1ABC', hiscall='W9XYZ'
   character(len=6) :: mygrid='', hisgrid='EN37'
   common/patience/npatience,nthreads
@@ -117,7 +114,7 @@ program jt9
   TRperiod=60.d0
 
   do
-     call getopt('hs:e:a:b:r:m:p:d:f:F:w:t:9876543WYqkTMUSZL:S:H:c:G:x:g:X:Q:C:R:N:E:D:',     &
+     call getopt('hs:e:a:b:r:m:p:d:f:F:w:t:98765432WYqkTMUSZL:S:H:c:G:x:g:X:Q:C:R:N:E:D:',     &
           long_options,c,optarg,arglen,stat,offset,remain,.true.)
      if (stat .ne. 0) then
         exit
@@ -179,6 +176,8 @@ program jt9
            mode = 66
         case ('4')
            mode = 4
+        case ('2')
+           mode = 6
         case ('5')
            mode = 5
         case ('6')
@@ -266,12 +265,6 @@ program jt9
      ntol = min (ntol, 1000)
   end if
 
-  if (.not. nexp_decode_set) then
-     if (mode .eq. 240 .or. mode .eq. 241 .or. mode .eq. 242) then
-        nexp_decode = 3 * 256   ! single decode off and nb=0
-     end if
-  end if
-  
   allocate(shared_data)
   nflatten=0
   do iarg = offset + 1, offset + remain
@@ -289,203 +282,60 @@ program jt9
      go to 2
 1    nutc=0
 2    nsps=6912
-     npts=TRperiod*12000.d0
+     npts=nint(TRperiod*12000.0)
      kstep=nsps/2
-     k=0
-     nhsym=0
-     nhsym0=-999
-     if(iarg .eq. offset + 1) then
-        call init_timer (trim(data_dir)//'/timer.out')
-        call timer('jt9     ',0)
-     endif
-     shared_data%id2=0          !??? Why is this necessary ???
-     if(mode.eq.5) npts=21*3456
-     if(mode.eq.66) npts=TRperiod*12000
-     do iblk=1,npts/kstep
-        k=iblk*kstep
-        if(mode.eq.8 .and. k.gt.179712) exit
-        call timer('read_wav',0)
-        read(unit=wav%lun,end=3) shared_data%id2(k-kstep+1:k)
-        go to 4
-3       call timer('read_wav',1)
-        print*,'EOF on input file ',trim(infile)
-        exit
-4       call timer('read_wav',1)
-        nhsym=(k-2048)/kstep
-        if(nhsym.ge.1 .and. nhsym.ne.nhsym0) then
-           if(mode.eq.9 .or. mode.eq.74) then
-! Compute rough symbol spectra for the JT9 decoder
-              ingain=0
-              call timer('symspec ',0)
-              nminw=1
-              call symspec(shared_data,k,Tperiod,nsps,ingain,      &
-                   bLowSidelobes,nminw,pxdb,s,df3,ihsym,npts8,pxdbmax)
-              call timer('symspec ',1)
-           endif
-           nhsym0=nhsym
-           if(nhsym.ge.181 .and. mode.ne.240 .and. mode.ne.241 .and. &
-              mode.ne.242 .and. mode.ne.66) exit
+     
+     do while (.true.)
+        k=0
+        nhsym=0
+        if(iarg .eq. offset + 1 .and. nutc.eq.0) then
+           call init_timer (trim(data_dir)//'/timer.out')
+           call timer('jt9     ',0)
         endif
-     enddo
-     close(unit=wav%lun)
+        shared_data%id2=0
+        
+        do iblk=1,npts/kstep
+           k=iblk*kstep
+           read(unit=wav%lun,end=3) shared_data%id2(k-kstep+1:k)
+           go to 4
+3          if(iblk.eq.1 .and. k.eq.0) goto 5 ! EOF at start of block
+           shared_data%id2(k+1:)=0
+           exit
+4          nhsym=(k-2048)/kstep
+        enddo
 
-     shared_data%params%nutc=nutc
-     shared_data%params%ndiskdat=.true.
-     shared_data%params%ntr=TRperiod
-     shared_data%params%nfqso=nrxfreq
-     shared_data%params%newdat=.true.
-     shared_data%params%npts8=74736
-     shared_data%params%nfa=flow
-     shared_data%params%nfsplit=fsplit
-     shared_data%params%nfb=fhigh
-     shared_data%params%ntol=ntol
-     shared_data%params%kin=64800
-     if(mode.eq.240) shared_data%params%kin=720000   !### 60 s periods ###
-     shared_data%params%nzhsym=nhsym
-     shared_data%params%ndepth=ndepth
-     shared_data%params%lft8apon=.true.
-     shared_data%params%ljt65apon=.true.
-     shared_data%params%napwid=75
-     shared_data%params%dttol=3.
-     if(mode.eq.164 .and. nsubmode.lt.100) nsubmode=nsubmode+100
-     shared_data%params%nagain=.false.
-     shared_data%params%nclearave=.false.
-     shared_data%params%lapcqonly=.false.
-     shared_data%params%naggressive=0
-     shared_data%params%n2pass=2
-     shared_data%params%nQSOprogress=nQSOProg
-     shared_data%params%nranera=6                      !### ntrials=3000
-     shared_data%params%nrobust=.false.
-     shared_data%params%nexp_decode=nexp_decode
-     shared_data%params%lmultift8=multift8
-     shared_data%params%mycall=transfer(mycall,shared_data%params%mycall)
-     shared_data%params%mygrid=transfer(mygrid,shared_data%params%mygrid)
-     shared_data%params%hiscall=transfer(hiscall,shared_data%params%hiscall)
-     shared_data%params%hisgrid=transfer(hisgrid,shared_data%params%hisgrid)
-     if (tx9) then
-        shared_data%params%ntxmode=9
-     else
-        shared_data%params%ntxmode=65
-     end if
-     if (mode.eq.0) then
-        shared_data%params%nmode=65+9
-     else
+        shared_data%params%nutc=nutc
+        shared_data%params%ndiskdat=.true.
+        shared_data%params%ntr=TRperiod
+        shared_data%params%nfqso=nrxfreq
+        shared_data%params%newdat=.true.
+        shared_data%params%npts8=74736
+        shared_data%params%nfa=flow
+        shared_data%params%nfsplit=fsplit
+        shared_data%params%nfb=fhigh
+        shared_data%params%ntol=ntol
+        shared_data%params%kin=64800
+        shared_data%params%nzhsym=nhsym
+        shared_data%params%ndepth=ndepth
+        shared_data%params%lft8apon=.true.
+        shared_data%params%ljt65apon=.true.
+        shared_data%params%napwid=75
+        shared_data%params%dttol=3.
         shared_data%params%nmode=mode
-     end if
-     shared_data%params%nsubmode=nsubmode
-
-     if (multift8 .and. mode.eq.8) then
-        shared_data%params%lft8subpass = .true.
-        shared_data%params%lhideft8dupes = hidedupes
-        shared_data%params%nft8cycles = ncycles
-        shared_data%params%nmt = nmt
-        if(nmtft8decsens.eq.1) then
-           lft8lowth = .false.
-           lft8subpass = .false.
-        elseif(nmtft8decsens.eq.2) then
-           lft8lowth = .true.
-           lft8subpass = .false.        
-        elseif(nmtft8decsens.eq.3) then
-           lft8lowth = .true.
-           lft8subpass = .true.              
-        end if
-        shared_data%params%lft8lowth = lft8lowth
-        shared_data%params%lft8subpass = lft8subpass
-        shared_data%params%ndecoderstart = ndecoderstart 
-        shared_data%params%lwidedxcsearch = lwidedxcsearch
-        shared_data%params%ndtcenter = 0
-        shared_data%params%lmodechanged = .false.
-        shared_data%params%nsecbandchanged = 0
-        shared_data%params%ncandthin = 100
-        shared_data%params%nft8rxfsens = nft8rxfsens
-        shared_data%params%lhound = .false.
-        shared_data%params%lcommonft8b = .true.
-        shared_data%params%lbandchanged = .false.
-        shared_data%params%lmultinst = .false.
-        shared_data%params%nlasttx = 0
-        shared_data%params%nhint = .false.
-        shared_data%params%ndelay = 0
-        shared_data%params%nprepass = 4
-        shared_data%params%nharmonicsdepth = 0
-        shared_data%params%nsdecatt = 1
-      !print*,'lwidedxcsearch ',shared_data%params%lwidedxcsearch
-     end if
-!### temporary, for MAP65:
-     if(mode.eq.66 .and. TRperiod.eq.60) shared_data%params%emedelay=2.5
-
-     datetime="2013-Apr-16 15:13" !### Temp
-     shared_data%params%datetime=transfer(datetime,shared_data%params%datetime)
-     if(mode.eq.9 .and. fsplit.ne.2700) shared_data%params%nfa=fsplit
-     nearly=50
-     if(mode.eq.8 .and. .not.  shared_data%params%lmultift8) then
-! "Early" decoding pass, FT8 only, when jt9 reads data from disk
-        nearly=41
-        shared_data%params%nzhsym=nearly
-        id2a(1:nearly*3456)=shared_data%id2(1:nearly*3456)
-        id2a(nearly*3456+1:)=0
-        call multimode_decoder(shared_data%ss,id2a,      &
+        if(mode.eq.0) shared_data%params%nmode=65+9
+        shared_data%params%nsubmode=nsubmode
+        shared_data%params%mycall=transfer(mycall,shared_data%params%mycall)
+        shared_data%params%mygrid=transfer(mygrid,shared_data%params%mygrid)
+        shared_data%params%hiscall=transfer(hiscall,shared_data%params%hiscall)
+        shared_data%params%hisgrid=transfer(hisgrid,shared_data%params%hisgrid)
+        
+        call multimode_decoder(shared_data%ss,shared_data%id2, &
              shared_data%params,nfsample)
-        nearly=47
-        shared_data%params%nzhsym=nearly
-        id2a(1:nearly*3456)=shared_data%id2(1:nearly*3456)
-        id2a(nearly*3456+1:)=0
-        call multimode_decoder(shared_data%ss,id2a,      &
-             shared_data%params,nfsample)
-        id2a(nearly*3456+1:50*3456)=shared_data%id2(nearly*3456+1:50*3456)
-        id2a(50*3456+1:)=0
-        shared_data%params%nzhsym=50
-        call multimode_decoder(shared_data%ss,id2a,      &
-             shared_data%params,nfsample)
-        cycle
-     else if(mode.eq.8 .and. shared_data%params%lmultift8) then
-        if(shared_data%params%ndecoderstart.lt.2) then
-           nearly=41
-           shared_data%params%lmultift8=.false.
-           shared_data%params%nzhsym=nearly
-           id2a(1:nearly*3456)=shared_data%id2(1:nearly*3456)
-           id2a(nearly*3456+1:)=0
-           call multimode_decoder(shared_data%ss,id2a,      &
-                shared_data%params,nfsample)
-           if(shared_data%params%ndecoderstart.lt.2) then
-              nearly=46
-              shared_data%params%lmultift8=.false.
-              shared_data%params%nzhsym=nearly
-              id2a(1:nearly*3456)=shared_data%id2(1:nearly*3456)
-              id2a(nearly*3456+1:)=0
-              call multimode_decoder(shared_data%ss,id2a,      &
-                   shared_data%params,nfsample)
-           endif
-           if(shared_data%params%ndecoderstart.eq.0) nearly=49
-           if(shared_data%params%ndecoderstart.eq.1) nearly=50
-           shared_data%params%lmultift8=.true.
-           shared_data%params%nzhsym=nearly
-           id2a(1:nearly*3456)=shared_data%id2(1:nearly*3456)
-           id2a(nearly*3456+1:)=0
-           dd(1:nearly*3456)=shared_data%id2(1:nearly*3456)
-           dd(nearly*3456+1:)=0
-           dd8(1:nearly*3456)=shared_data%id2(1:nearly*3456)
-           dd8(nearly*3456+1:)=0
-        else
-           if(shared_data%params%ndecoderstart.eq.2) nearly=48
-           if(shared_data%params%ndecoderstart.eq.3) nearly=49
-           if(shared_data%params%ndecoderstart.eq.4) nearly=50
-           shared_data%params%nzhsym=nearly
-           id2a(1:nearly*3456)=shared_data%id2(1:nearly*3456)
-           id2a(nearly*3456+1:)=0
-           dd(1:nearly*3456)=shared_data%id2(1:nearly*3456)
-           dd(nearly*3456+1:)=0
-           dd8(1:nearly*3456)=shared_data%id2(1:nearly*3456)
-           dd8(nearly*3456+1:)=0
-        endif
-
-     ! MSK144        
-     else if (mode .eq. 144) then
-        call decode_msk144(shared_data%id2, shared_data%params, data_dir)
-     endif
-
-! Normal decoding pass
-     call multimode_decoder(shared_data%ss,shared_data%id2, &
-          shared_data%params,nfsample)
+        
+        nutc = nutc + nint(TRperiod/60.0) ! Dummy update
+        if (k.lt.npts) exit ! Last block
+     enddo
+5    close(unit=wav%lun)
   enddo
 
   call timer('jt9     ',1)
@@ -498,13 +348,8 @@ program jt9
 
 ! Save FFTW wisdom and free memory
   if(len(trim(wisfile)).gt.0) iret=fftwf_export_wisdom_to_filename(wisfile)
-  if(mode.eq.8 .and. shared_data%params%lmultift8) then
-     call four2avar(a,-1,1,1,1)
-     call filbigvar(-1.,0,0.,0,0.,0.,0)       !used for FFT plans for FT8 multithread detector
-  else
-     call four2a(a,-1,1,1,1)
-     call filbig(a,-1,1,0.0,0,0,0,0,0)        !used for all other FFT plans
-  endif
+  call four2a(a,-1,1,1,1)
+  call filbig(a,-1,1,0.0,0,0,0,0,0)        !used for all other FFT plans
   call fftwf_cleanup_threads()
   call fftwf_cleanup()
 

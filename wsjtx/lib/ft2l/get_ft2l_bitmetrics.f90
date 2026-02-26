@@ -11,7 +11,7 @@ subroutine get_ft2l_bitmetrics(cd,bitmetrics,badsync)
    logical one(0:255,0:7)    ! 256 4-symbol sequences, 8 bits
    logical first
    logical badsync
-   real bitmetrics(2*NN,3)
+   real bitmetrics(2*NN,5)
    real s2(0:255)
    real s4(0:3,NN)
 
@@ -36,37 +36,69 @@ subroutine get_ft2l_bitmetrics(cd,bitmetrics,badsync)
    do k=1,NN
       i1=(k-1)*NSS
       csymb=cd(i1:i1+NSS-1)
-      call four2a(csymb,NSS,1,-1,1)
+      call four2a(csymb,NSS,1,-1,1)            !c2c FFT
       cs(0:3,k)=csymb(1:4)
       s4(0:3,k)=abs(csymb(1:4))
    enddo
 
-! Sync quality check
-   is1=0
-   is2=0
-   is3=0
-   is4=0
+   ! Sync quality check
+   nbits=0
    badsync=.false.
    ibmax=0
    
    do k=1,4
       ip=maxloc(s4(:,k))
-      if(icos4a(k-1).eq.(ip(1)-1)) is1=is1+1
+      is_det=ip(1)-1
+      is_true=icos4a(k-1)
+      if(is_det.eq.is_true) then
+         nbits=nbits+2
+      else if(abs(is_det-is_true).eq.2) then
+         nbits=nbits+0
+      else
+         nbits=nbits+1
+      endif
+
       ip=maxloc(s4(:,k+33))
-      if(icos4b(k-1).eq.(ip(1)-1)) is2=is2+1
+      is_det=ip(1)-1
+      is_true=icos4b(k-1)
+      if(is_det.eq.is_true) then
+         nbits=nbits+2
+      else if(abs(is_det-is_true).eq.2) then
+         nbits=nbits+0
+      else
+         nbits=nbits+1
+      endif
+
       ip=maxloc(s4(:,k+66))
-      if(icos4c(k-1).eq.(ip(1)-1)) is3=is3+1
+      is_det=ip(1)-1
+      is_true=icos4c(k-1)
+      if(is_det.eq.is_true) then
+         nbits=nbits+2
+      else if(abs(is_det-is_true).eq.2) then
+         nbits=nbits+0
+      else
+         nbits=nbits+1
+      endif
+
       ip=maxloc(s4(:,k+99))
-      if(icos4d(k-1).eq.(ip(1)-1)) is4=is4+1
+      is_det=ip(1)-1
+      is_true=icos4d(k-1)
+      if(is_det.eq.is_true) then
+         nbits=nbits+2
+      else if(abs(is_det-is_true).eq.2) then
+         nbits=nbits+0
+      else
+         nbits=nbits+1
+      endif
    enddo
-   nsync=is1+is2+is3+is4   !Number of correct hard sync symbols, 0-16
-   if(nsync .lt. 8) then
+   if(nbits .lt. 8) then
       badsync=.true.
       return
    endif
 
+   bitmetrics=0.
    do nseq=1,3             !Try coherent sequences of 1, 2, and 4 symbols
-      if(nseq.eq.1) nsym=1
+      nsym=1
       if(nseq.eq.2) nsym=2
       if(nseq.eq.3) nsym=4
       nt=2**(2*nsym)
@@ -78,7 +110,7 @@ subroutine get_ft2l_bitmetrics(cd,bitmetrics,badsync)
             i3=iand(i,15)/4
             i4=iand(i,3)
             if(nsym.eq.1) then
-               s2(i)=abs(cs(graymap(i4),ks))
+               s2(i)=abs(cs(graymap(iand(i,3)),ks))
             elseif(nsym.eq.2) then
                s2(i)=abs(cs(graymap(i3),ks)+cs(graymap(i4),ks+1))
             elseif(nsym.eq.4) then
@@ -111,6 +143,19 @@ subroutine get_ft2l_bitmetrics(cd,bitmetrics,badsync)
    call normalizebmet(bitmetrics(:,1),2*NN)
    call normalizebmet(bitmetrics(:,2),2*NN)
    call normalizebmet(bitmetrics(:,3),2*NN)
+
+   do i=1,2*NN
+      ! Best-of is the one with max absolute value
+      bmax=-1.0
+      do j=1,3
+         if(abs(bitmetrics(i,j)).gt.bmax) then
+            bmax=abs(bitmetrics(i,j))
+            bitmetrics(i,4)=bitmetrics(i,j)
+         endif
+      enddo
+      bitmetrics(i,5)=(bitmetrics(i,1)+bitmetrics(i,2)+bitmetrics(i,3))/3.0
+   enddo
+
    return
 
 end subroutine get_ft2l_bitmetrics

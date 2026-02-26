@@ -6,7 +6,7 @@ subroutine ft2l_downsample(dd,newdata,f0,c)
    complex c(0:NMAX/NDOWN-1)
    complex c1(0:NFFT2-1)
    complex cx(0:NMAX/2)
-   real x(NMAX), window(0:NFFT2-1)
+   real x(NMAX+2), window(0:NFFT2-1)
    equivalence (x,cx)
    logical first, newdata
    data first/.true./
@@ -20,17 +20,17 @@ subroutine ft2l_downsample(dd,newdata,f0,c)
       iwt = bw_transition / df
       iwf = bw_flat / df
       pi=4.0*atan(1.0)
+      window=0.0
       window(0:iwt-1) = 0.5*(1+cos(pi*(/(i,i=iwt-1,0,-1)/)/iwt))
       window(iwt:iwt+iwf-1)=1.0
       window(iwt+iwf:2*iwt+iwf-1) = 0.5*(1+cos(pi*(/(i,i=0,iwt-1)/)/iwt))
-      window(2*iwt+iwf:)=0.0
       iws = baud / df
       window=cshift(window,iws)
       first=.false.
    endif
 
    if(newdata) then
-      x=dd
+      x(1:NMAX)=dd
       call four2a(cx,NMAX,1,-1,0)             !r2c FFT to freq domain
    endif
    i0=nint(f0/df)

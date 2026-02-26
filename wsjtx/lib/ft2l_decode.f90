@@ -43,12 +43,12 @@ contains
       complex cd2(0:NDMAX-1)                  !Complex waveform
       complex cb(0:NDMAX-1)
       complex cd(0:NN*NSS-1)                       !Complex waveform
-      complex ctwk(2*NSS),ctwk2(2*NSS,-16:16)
+      complex ctwk(2*NSS),ctwk2(2*NSS,-42:42)
 
       real a(5)
-      real bitmetrics(2*NN,3)
+      real bitmetrics(2*NN,5)
       real dd(NMAX)
-      real llr(2*ND),llra(2*ND),llrb(2*ND),llrc(2*ND),llrd(2*ND)
+      real llr(2*ND),llra(2*ND),llrb(2*ND),llrc(2*ND),llrd(2*ND),llre(2*ND)
       real candidate(2,MAXCAND)
       real savg(NH1),sbase(NH1)
 
@@ -100,22 +100,14 @@ contains
          txt=NZ*dt                       !Transmission length (s) without ramp up/down
          twopi=8.0*atan(1.0)
          h=1.0
-
-         do idf=-16,16
+         
+         do idf=-42,42
             a=0.
             a(1)=real(idf)
             ctwk=1.
             call twkfreq1(ctwk,2*NSS,fs/2.0,a,ctwk2(:,idf))
          enddo
 
-         mcq=2*mod(mcq+rvec(1:29),2)-1
-         mcqru=2*mod(mcqru+rvec(1:29),2)-1
-         mcqfd=2*mod(mcqfd+rvec(1:29),2)-1
-         mcqtest=2*mod(mcqtest+rvec(1:29),2)-1
-         mcqww=2*mod(mcqww+rvec(1:29),2)-1
-         mrrr=2*mod(mrrr+rvec(59:77),2)-1
-         m73=2*mod(m73+rvec(59:77),2)-1
-         mrr73=2*mod(mrr73+rvec(59:77),2)-1
          nappasses(0)=2
          nappasses(1)=2
          nappasses(2)=2
@@ -123,21 +115,12 @@ contains
          nappasses(4)=2
          nappasses(5)=3
 
-! iaptype
-!------------------------
-!   1        CQ     ???    ???           (29 ap bits)
-!   2        MyCall ???    ???           (29 ap bits)
-!   3        MyCall DxCall ???           (58 ap bits)
-!   4        MyCall DxCall RRR           (77 ap bits)
-!   5        MyCall DxCall 73            (77 ap bits)
-!   6        MyCall DxCall RR73          (77 ap bits)
-!********
-         naptypes(0,1:4)=(/1,2,0,0/) ! Tx6 selected (CQ)
-         naptypes(1,1:4)=(/2,3,0,0/) ! Tx1
-         naptypes(2,1:4)=(/2,3,0,0/) ! Tx2
-         naptypes(3,1:4)=(/3,6,0,0/) ! Tx3
-         naptypes(4,1:4)=(/3,6,0,0/) ! Tx4
-         naptypes(5,1:4)=(/3,1,2,0/) ! Tx5
+         naptypes(0,1:2)=(/1,2/)
+         naptypes(1,1:2)=(/1,2/)
+         naptypes(2,1:2)=(/1,2/)
+         naptypes(3,1:2)=(/1,3/)
+         naptypes(4,1:2)=(/1,3/)
+         naptypes(5,1:3)=(/1,3,6/)
 
          mycall0=''
          hiscall0=''
@@ -148,7 +131,8 @@ contains
       if(l1.ne.0) mycall(l1:)=" "
       l1=index(hiscall,char(0))
       if(l1.ne.0) hiscall(l1:)=" "
-      if(mycall.ne.mycall0 .or. hiscall.ne.hiscall0) then
+
+      if(first .or. mycall.ne.mycall0 .or. hiscall.ne.hiscall0) then
          apbits=0
          apbits(1)=99
          apbits(30)=99
@@ -177,22 +161,24 @@ contains
          apbits=2*cw-1
          if(nohiscall) apbits(30)=99
 
- 10       continue
+10       continue
          mycall0=mycall
          hiscall0=hiscall
       endif
+
+      dd=iwave/1000.0
       ndecodes=0
-      decodes=' '
+      decodes=''
       fa=nfa
       fb=nfb
-      dd=iwave
 
-! ndepth=3: 3 passes, bp+osd
+
+! ndepth=3: 5 passes, including osd
 ! ndepth=2: 3 passes, bp only
 ! ndepth=1: 1 pass, no subtraction
 
-      max_iterations=40
-      syncmin=1.18
+      max_iterations=100
+      syncmin=1.05
       dosubtract=.true.
       doosd=.true.
       nsp=3
@@ -230,33 +216,33 @@ contains
             if(dobigfft) dobigfft=.false.
             sum2=sum(cd2*conjg(cd2))/(real(NMAX)/real(NDOWN))
             if(sum2.gt.0.0) cd2=cd2/sqrt(sum2)
-! Sample rate is now 12000/18 = 666.67 samples/second
+! Sample rate is now 12000/9 = 1333.33 samples/second
             do iseg=1,3                ! DT search is done over 3 segments
                do isync=1,2          
                   if(isync.eq.1) then
-                     idfmin=-12
-                     idfmax=12
-                     idfstp=3
-                     ibmin=-344
-                     ibmax=1012
+                     idfmin=-24
+                     idfmax=24
+                     idfstp=6
+                     ibmin=-688
+                     ibmax=2024
                      if(iseg.eq.1) then
-                        ibmin=108
-                        ibmax=560
+                        ibmin=216
+                        ibmax=1120
                      elseif(iseg.eq.2) then
                         smax1=smax
-                        ibmin=560
-                        ibmax=1012
+                        ibmin=1120
+                        ibmax=2024
                      elseif(iseg.eq.3) then
-                        ibmin=-344
-                        ibmax=108
+                        ibmin=-688
+                        ibmax=216
                      endif
-                     ibstp=4
+                     ibstp=1
                   else
-                     idfmin=idfbest-4
-                     idfmax=idfbest+4
+                     idfmin=idfbest-8
+                     idfmax=idfbest+8
                      idfstp=1
-                     ibmin=ibest-5
-                     ibmax=ibest+5
+                     ibmin=ibest-10
+                     ibmax=ibest+10
                      ibstp=1
                   endif
                   ibest=-1
@@ -267,6 +253,7 @@ contains
                      do istart=ibmin,ibmax,ibstp
                         call sync2ld(cd2,istart,ctwk2(:,idf),1,sync)  !Find sync power
                         if(sync.gt.smax) then
+                           maxit=1
                            smax=sync
                            ibest=istart
                            idfbest=idf
@@ -276,7 +263,7 @@ contains
                   call timer('sync2ld ',1)
                enddo
                if(iseg.eq.1) smax1=smax
-               if(smax.lt.1.2) cycle
+               if(smax.lt.1.0) cycle
                if(iseg.gt.1 .and. smax.lt.smax1) cycle 
                f1=f0+real(idfbest)
                if( f1.le.10.0 .or. f1.ge.4990.0 ) cycle
@@ -296,7 +283,9 @@ contains
                call timer('bitmet  ',0)
                call get_ft2l_bitmetrics(cd,bitmetrics,badsync)
                call timer('bitmet  ',1)
-               if(badsync) cycle
+               if(badsync) then
+                  cycle
+               endif
                hbits=0
                where(bitmetrics(:,1).ge.0) hbits=1
                ns1=count(hbits(  1:  8).eq.(/0,0,0,1,1,0,1,1/))
@@ -304,7 +293,7 @@ contains
                ns3=count(hbits(133:140).eq.(/1,1,1,0,0,1,0,0/))
                ns4=count(hbits(199:206).eq.(/1,0,1,1,0,0,0,1/))
                nsync_qual=ns1+ns2+ns3+ns4
-               if(nsync_qual.lt. 20) cycle
+               if(nsync_qual.lt. 15) cycle
 
                scalefac=2.83
                llra(  1: 58)=bitmetrics(  9: 66, 1)
@@ -319,37 +308,37 @@ contains
                llrc( 59:116)=bitmetrics( 75:132, 3)
                llrc(117:174)=bitmetrics(141:198, 3)
                llrc=scalefac*llrc
+               llrd(  1: 58)=bitmetrics(  9: 66, 4)
+               llrd( 59:116)=bitmetrics( 75:132, 4)
+               llrd(117:174)=bitmetrics(141:198, 4)
+               llrd=scalefac*llrd
+               llre(  1: 58)=bitmetrics(  9: 66, 5)
+               llre( 59:116)=bitmetrics( 75:132, 5)
+               llre(117:174)=bitmetrics(141:198, 5)
+               llre=scalefac*llre
 
                apmag=maxval(abs(llra))*1.1
-               npasses=3+nappasses(nQSOProgress)
-               if(lapcqonly) npasses=4
-               if(ndepth.eq.1) npasses=3
-               if(ncontest.ge.6) npasses=3  ! Don't support Fox and Hound
+               npasses=5+nappasses(nQSOProgress)
+               if(lapcqonly) npasses=6
+               if(ndepth.eq.1) npasses=5
+               if(ncontest.ge.6) npasses=5  ! Don't support Fox and Hound
                do ipass=1,npasses
                   if(ipass.eq.1) llr=llra
                   if(ipass.eq.2) llr=llrb
                   if(ipass.eq.3) llr=llrc
-                  if(ipass.le.3) then
+                  if(ipass.eq.4) llr=llrd
+                  if(ipass.eq.5) llr=llre
+                  if(ipass.le.5) then
                      apmask=0
                      iaptype=0
                   endif
 
-                  if(ipass .gt. 3) then
+                  if(ipass .gt. 5) then
                      llrd=llrc
-                     iaptype=naptypes(nQSOProgress,ipass-3)
+                     iaptype=naptypes(nQSOProgress,ipass-5)
                      if(lapcqonly) iaptype=1
 
-! ncontest=0 : NONE
-!          1 : NA_VHF
-!          2 : EU_VHF
-!          3 : FIELD DAY
-!          4 : RTTY
-!          5 : WW_DIGI 
-!          6 : FOX
-!          7 : HOUND
-!
-! Conditions that cause us to bail out of AP decoding
-                     napwid=50
+                     napwid=75
                      if(ncontest.le.5 .and. iaptype.ge.3 .and. (abs(f1-nfqso).gt.napwid) ) cycle
                      if(iaptype.ge.2 .and. apbits(1).gt.1) cycle  ! No, or nonstandard, mycall
                      if(iaptype.ge.3 .and. apbits(30).gt.1) cycle ! No, or nonstandard, dxcall
@@ -401,8 +390,12 @@ contains
                      if(iaptype.eq.4 .or. iaptype.eq.5 .or. iaptype.eq.6) then
                         apmask=0
                         if(ncontest.le.5) then
-                           apmask(1:77)=1   ! mycall, hiscall, RRR|73|RR73
-                           if(iaptype.eq.6) llrd(1:77)=apmag*apbits(1:77)
+                           apmask(1:116)=1
+                           llrd(1:116)=apmag*apbits(1:116)
+                           apmask(117:135)=1
+                           if(iaptype.eq.4) llrd(117:135)=apmag*mrrr(1:19)
+                           if(iaptype.eq.5) llrd(117:135)=apmag*m73(1:19)
+                           if(iaptype.eq.6) llrd(117:135)=apmag*mrr73(1:19)
                         endif
                      endif
 
@@ -411,11 +404,11 @@ contains
                   message77=0
                   dmin=0.0
 
-                  ndeep=2
-                  maxosd=2  
+                  ndeep=3
+                  maxosd=3  
                   if(abs(nfqso-f1).le.napwid) then
-                     ndeep=2
-                     maxosd=3
+                     ndeep=3
+                     maxosd=4
                   endif
                   if(.not.doosd) maxosd = -1
                   call timer('dec174_91 ',0)
@@ -433,7 +426,7 @@ contains
                      if(.not.unpk77_success) exit
                      if(dosubtract) then
                         call get_ft2l_tones_from_77bits(message77,i4tone)
-                        dt=real(ibest)/666.67
+                        dt=real(ibest)/1333.33
                         call timer('subtract',0)
                         call subtractft2l(dd,i4tone,f1,dt)
                         call timer('subtract',1)
@@ -451,7 +444,7 @@ contains
                         xsnr=-21.0
                      endif
                      nsnr=nint(max(-21.0,xsnr))
-                     xdt=ibest/666.67 - 0.5
+                     xdt=ibest/1333.33 - 0.5
                      qual=1.0-(nharderror+dmin)/60.0 
                      call this%callback(smax,nsnr,xdt,f1,message,iaptype,qual)
                      exit

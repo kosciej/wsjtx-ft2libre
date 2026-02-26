@@ -2,14 +2,16 @@ subroutine gen_ft2lwave(itone,nsym,nsps,fsample,f0,cwave,wave,icmplx,nwave)
 
   real wave(nwave)
   complex cwave(nwave)
-  real pulse(6912)              !576*4*3
+  real pulse(3456)              !1152*3
   real dphi(0:250000-1)
   integer itone(nsym)
   logical first
   data first/.true./
-  save pulse,first,twopi,dt,hmod
+  integer nsps0
+  data nsps0/0/
+  save pulse,first,twopi,dt,hmod,nsps0
 
-  if(first) then
+  if(first .or. nsps.ne.nsps0) then
      twopi=8.0*atan(1.0)
      dt=1.0/fsample
      hmod=1.0
@@ -18,6 +20,7 @@ subroutine gen_ft2lwave(itone,nsym,nsps,fsample,f0,cwave,wave,icmplx,nwave)
         tt=(i-1.5*nsps)/real(nsps)
         pulse(i)=gfsk_pulse(1.0,tt)
      enddo
+     nsps0=nsps
      first=.false.
   endif
 
@@ -34,7 +37,7 @@ subroutine gen_ft2lwave(itone,nsym,nsps,fsample,f0,cwave,wave,icmplx,nwave)
 ! Calculate and insert the audio waveform
   phi=0.0
   dphi = dphi + twopi*f0*dt                          !Shift frequency up by f0
-  wave=0.
+  if(icmplx.eq.0) wave=0.
   if(icmplx.eq.1) cwave=0.
   k=0
   do j=0,(nsym+2)*nsps-1

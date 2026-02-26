@@ -5,7 +5,7 @@ subroutine getcandidates2l(dd,fa,fb,syncmin,nfqso,maxcand,savg,candidate,   &
   real s(NH1,NHSYM)
   real savg(NH1),savsm(NH1)
   real sbase(NH1)
-  real x(NFFT1)
+  real x(NFFT1+2)
   real window(NFFT1)
   complex cx(0:NH1)
   real candidate(2,maxcand),candidatet(2,maxcand)
@@ -30,7 +30,7 @@ subroutine getcandidates2l(dd,fa,fb,syncmin,nfqso,maxcand,savg,candidate,   &
      ia=(j-1)*NSTEP + 1
      ib=ia+NFFT1-1
      if(ib.gt.NMAX) exit
-     x=fac*dd(ia:ib)*window
+     x(1:NFFT1)=fac*dd(ia:ib)*window
      call four2a(x,NFFT1,1,-1,0)              !r2c FFT
      s(1:NH1,j)=abs(cx(1:NH1))**2
      savg=savg + s(1:NH1,j)                   !Average spectrum

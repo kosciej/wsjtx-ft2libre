@@ -11,7 +11,7 @@ subroutine genft2l(msg0,ichk,msgsent,msgbits,i4tone)
 ! s16 + 87symbols + 2 ramp up/down = 105 total channel symbols
 ! r1 + s4 + d29 + s4 + d29 + s4 + d29 + s4 + r1
 
-! Message duration: TxT = 105*576/12000 = 5.04 s
+! Message duration: TxT = 105*288/12000 = 2.52 s
   
 ! use iso_c_binding, only: c_loc,c_size_t
 

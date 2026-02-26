@@ -2216,6 +2216,8 @@ void MainWindow::fixStop()
     m_hsymStop=21;
   } else if (m_mode=="FT2L") {
     m_hsymStop=21;
+    m_earlyDecode=12;
+    m_earlyDecode2=17;
   } else if(m_mode=="FST4" or m_mode=="FST4W") {
     int stop[] = {39,85,187,387,1003,3107,6232};
     int stop_EME[] = {48,95,197,396,1012,3107,6232};
@@ -2369,7 +2371,7 @@ void MainWindow::dataSink(qint64 frames)
   if(m_multithreadFT8 && m_ft8DecoderStart==1) m_earlyDecode2 = 46; // ft8md
 
   if(m_ihsym==m_hsymStop) bCallDecoder=true;
-  if(m_mode=="FT8" && !m_diskData && !(m_multithreadFT8 && m_ft8DecoderStart>1)) {  //ft8md Try to call MTD two times when "Very early" has been selected
+  if((m_mode=="FT8" or m_mode=="FT2L") && !m_diskData && !(m_multithreadFT8 && m_ft8DecoderStart>1)) {  //ft8md Try to call MTD two times when "Very early" has been selected
     if(m_ihsym==m_earlyDecode) bCallDecoder=true;
     if(m_ihsym==m_earlyDecode2 && !(m_multithreadFT8 && m_ft8DecoderStart!=1)) bCallDecoder=true;
   }
@@ -2470,8 +2472,8 @@ void MainWindow::dataSink(qint64 frames)
     dec_data.params.nagain=0;
     dec_data.params.nagainfil=0;	
     dec_data.params.nzhsym=m_hsymStop;
-    if(m_mode=="FT8" and m_ihsym==m_earlyDecode and !m_diskData && !(m_multithreadFT8 && m_ft8DecoderStart>1)) dec_data.params.nzhsym=m_earlyDecode;
-    if(m_mode=="FT8" and m_ihsym==m_earlyDecode2 and !m_diskData && !(m_multithreadFT8 && m_ft8DecoderStart!=1)) dec_data.params.nzhsym=m_earlyDecode2;
+    if((m_mode=="FT8" or m_mode=="FT2L") and m_ihsym==m_earlyDecode and !m_diskData && !(m_multithreadFT8 && m_ft8DecoderStart>1)) dec_data.params.nzhsym=m_earlyDecode;
+    if((m_mode=="FT8" or m_mode=="FT2L") and m_ihsym==m_earlyDecode2 and !m_diskData && !(m_multithreadFT8 && m_ft8DecoderStart!=1)) dec_data.params.nzhsym=m_earlyDecode2;
     QDateTime now {QDateTime::currentDateTimeUtc ()};
     m_dateTime = now.toString ("yyyy-MMM-dd hh:mm");
     if(m_mode!="WSPR") {
@@ -2479,7 +2481,7 @@ void MainWindow::dataSink(qint64 frames)
       decode(); //Start decoder
     }
 
-    if(m_mode=="FT8" and !(m_diskData or (m_multithreadFT8 && m_ft8DecoderStart<2)) and (m_ihsym==m_earlyDecode or m_ihsym==m_earlyDecode2)) return;
+    if((m_mode=="FT8" or m_mode=="FT2L") and !(m_diskData or (m_multithreadFT8 && m_ft8DecoderStart<2)) and (m_ihsym==m_earlyDecode or m_ihsym==m_earlyDecode2)) return;
     if (!m_diskData)
       {
         if (!(m_mode=="FT8" && m_multithreadFT8)) Q_EMIT reset_audio_input_stream (true); // reports dropped samples
@@ -7906,7 +7908,7 @@ void MainWindow::guiUpdate()
           genft2l_(message, &ichk, msgsent, const_cast<char *> (ft2lmsgbits),
                   const_cast<int *>(itone), (FCL)37, (FCL)37);
           int nsym=103;
-          int nsps=4*576;
+          int nsps=4*288;
           float fsample=48000.0;
           float f0=ui->TxFreqSpinBox->value() - m_XIT;
           int nwave=(nsym+2)*nsps;
@@ -10860,7 +10862,7 @@ void MainWindow::on_actionFT2L_triggered()
     m_config.setSpecial_None();
     m_specOp=m_config.special_op_id();
   }
-  m_TRperiod=7.5;
+  m_TRperiod=3.75;
   bool bVHF=m_config.enable_VHF_features();
   m_bFast9=false;
   m_bFastMode=false;
@@ -10870,9 +10872,9 @@ void MainWindow::on_actionFT2L_triggered()
   m_FFTSize = m_nsps/2;
   if (m_tci_audio) Q_EMIT m_config.transceiver_blocksize (m_FFTSize);
   else Q_EMIT FFTSize (m_FFTSize);
-  m_hsymStop=21;
+  m_hsymStop=12;
   setup_status_bar (bVHF);
-  m_toneSpacing=12000.0/576.0;
+  m_toneSpacing=-1.0;
   ui->actionFT2L->setChecked(true);
   m_wideGraph->setMode(m_mode);
   m_send_RR73=true;
@@ -12599,11 +12601,11 @@ void MainWindow::transmit (double snr)
     toneSpacing=-2.0;                     //Transmit a pre-computed, filtered waveform.
     if (m_tci_audio) {
       Q_EMIT m_config.transceiver_modulator_start(m_mode, NUM_FT2L_SYMBOLS,
-             576.0,ui->TxFreqSpinBox->value()-m_XIT,
+             288.0,ui->TxFreqSpinBox->value()-m_XIT,
              toneSpacing,true,false,snr,m_TRperiod);
     } else {
       Q_EMIT sendMessage (m_mode, NUM_FT2L_SYMBOLS,
-             576.0, ui->TxFreqSpinBox->value() - m_XIT,
+             288.0, ui->TxFreqSpinBox->value() - m_XIT,
              toneSpacing, m_soundOutput, m_config.audio_output_channel(),
              true, false, snr, m_TRperiod);
     }
