@@ -1,0 +1,159 @@
+name: Build and Release WSJT-X
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a GitHub Release'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    outputs:
+      artifact_name: ${{ steps.package.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake g++ gfortran \
+            qtbase5-dev qtmultimedia5-dev libqt5serialport5-dev libqt5websockets5-dev \
+            libfftw3-dev libusb-1.0-0-dev libboost-log-dev \
+            asciidoctor dpkg-dev
+
+      - name: Build and Package
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DWSJT_GENERATE_DOCS=OFF -DWSJT_SKIP_MANPAGES=ON
+          cmake --build . --target superpackage --parallel $(nproc)
+
+      - name: Locate Package
+        id: package
+        run: |
+          PKG=$(ls build/wsjtx-prefix/src/wsjtx-build/wsjtx*.deb | head -n 1)
+          echo "path=$PKG" >> $GITHUB_OUTPUT
+          echo "name=$(basename $PKG)" >> $GITHUB_OUTPUT
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-installer
+          path: ${{ steps.package.outputs.path }}
+
+  build-macos:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install cmake gcc qt@5 fftw libusb boost
+
+      - name: Build and Package
+        run: |
+          mkdir build
+          cd build
+          export PATH="/usr/local/opt/qt@5/bin:$PATH"
+          cmake .. \
+            -DWSJT_GENERATE_DOCS=OFF \
+            -DWSJT_SKIP_MANPAGES=ON \
+            -DQt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5
+          cmake --build . --target superpackage --parallel $(sysctl -n hw.ncpu)
+
+      - name: Locate Package
+        id: package
+        run: |
+          PKG=$(ls build/wsjtx-prefix/src/wsjtx-build/wsjtx*.dmg | head -n 1)
+          echo "path=$PKG" >> $GITHUB_OUTPUT
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: ${{ steps.package.outputs.path }}
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-gcc-fortran
+            mingw-w64-x86_64-qt5
+            mingw-w64-x86_64-fftw
+            mingw-w64-x86_64-libusb
+            mingw-w64-x86_64-boost
+            patch git
+
+      - name: Build and Package
+        shell: msys2 {0}
+        run: |
+          mkdir build
+          cd build
+          cmake .. -G "Unix Makefiles" -DWSJT_GENERATE_DOCS=OFF -DWSJT_SKIP_MANPAGES=ON
+          cmake --build . --target superpackage --parallel $(nproc)
+
+      - name: Locate Package
+        id: package
+        shell: bash
+        run: |
+          PKG=$(ls build/wsjtx-prefix/src/wsjtx-build/wsjtx*.exe | head -n 1)
+          echo "path=$PKG" >> $GITHUB_OUTPUT
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: ${{ steps.package.outputs.path }}
+
+  create-release:
+    needs: [build-linux, build-macos, build-windows]
+    if: github.event_name == 'workflow_dispatch' && inputs.create_release == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ft2l-v${{ github.run_number }}
+          name: FT2L Release ${{ github.run_number }}
+          body: |
+            Automated build of WSJT-X with FT2L protocol support.
+            
+            This release contains installers for Linux (.deb), macOS (.dmg), and Windows (.exe).
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/linux-installer/*
+            artifacts/macos-installer/*
+            artifacts/windows-installer/*
