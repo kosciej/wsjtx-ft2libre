@@ -111,8 +111,6 @@ include (ExternalProject)
 #
 ExternalProject_Add (hamlib
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/hamlib-4.7
-  # Force files to look up-to-date to prevent aclocal/automake from running
-  UPDATE_COMMAND ${CMAKE_COMMAND} -E touch <SOURCE_DIR>/aclocal.m4 <SOURCE_DIR>/configure <SOURCE_DIR>/Makefile.in
   PATCH_COMMAND ${PATCH_EXECUTABLE} -p1 -N < ${CMAKE_CURRENT_SOURCE_DIR}/hamlib.patch
   CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --disable-shared --enable-static --without-cxx-binding ${EXTRA_FLAGS} # LIBUSB_LIBS=${USB_LIBRARY}
   BUILD_COMMAND $(MAKE) all V=1 # $(MAKE) is ExternalProject_Add() magic to do recursive make
@@ -186,7 +184,7 @@ ExternalProject_Add (wsjtx
   -DQt5Multimedia_DIR=${Qt5Multimedia_DIR}
   -DQt5SerialPort_DIR=${Qt5SerialPort_DIR}
   -DQt5WebSockets_DIR=${Qt5WebSockets_DIR}
-  -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+  -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
   -DWSJT_GENERATE_DOCS=OFF
   -DWSJT_SKIP_MANPAGES=ON
   ${WSJTX_EXTRA_CMAKE_OPTIONS}
@@ -197,7 +195,7 @@ ExternalProject_Add_Step (wsjtx package
   COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target package
   COMMAND echo "Built hamlib from branch/tag: ${hamlib_TAG}"
   COMMAND echo "Built WSJT-X from: ${WSJTX_TAG}"
-  COMMAND echo "Package(s) generated in <BINARY_DIR>."
+  COMMAND echo "Package(s) generated in ${BINARY_DIR}."
   COMMENT "Generating WSJT-X package."
   DEPENDEES build
   )

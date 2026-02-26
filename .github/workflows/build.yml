@@ -24,7 +24,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             cmake g++ gfortran \
-            autoconf automake libtool make ninja-build \
+            autoconf automake libtool make \
             qtbase5-dev qtmultimedia5-dev libqt5serialport5-dev libqt5websockets5-dev \
             libfftw3-dev libusb-1.0-0-dev libboost-log-dev \
             asciidoctor dpkg-dev
@@ -33,7 +33,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -GNinja \
+          cmake .. -G "Unix Makefiles" \
             -DWSJT_GENERATE_DOCS=OFF \
             -DWSJT_SKIP_MANPAGES=ON \
             -DQt5_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5 \
@@ -66,14 +66,14 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          brew install cmake gcc autoconf automake libtool qt@5 fftw libusb boost ninja
+          brew install cmake gcc autoconf automake libtool qt@5 fftw libusb boost
 
       - name: Build and Package
         run: |
           mkdir build
           cd build
           export PATH="$(brew --prefix qt@5)/bin:$PATH"
-          cmake .. -GNinja \
+          cmake .. -G "Unix Makefiles" \
             -DWSJT_GENERATE_DOCS=OFF \
             -DWSJT_SKIP_MANPAGES=ON \
             -DQt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5 \
@@ -122,6 +122,8 @@ jobs:
         run: |
           mkdir build
           cd build
+          # Trigger bootstrap if needed for auxiliary files
+          cd ../hamlib-4.7 && ./bootstrap && cd ../build
           cmake .. -G "Unix Makefiles" -DWSJT_GENERATE_DOCS=OFF -DWSJT_SKIP_MANPAGES=ON
           cmake --build . --target superpackage --parallel $(nproc)
 
