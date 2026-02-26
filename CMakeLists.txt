@@ -187,6 +187,8 @@ ExternalProject_Add (wsjtx
   -DQt5Sql_DIR=${Qt5Sql_DIR}
   -DQt5Svg_DIR=${Qt5Svg_DIR}
   -DQt5Multimedia_DIR=${Qt5Multimedia_DIR}
+  -DQt5SerialPort_DIR=${Qt5SerialPort_DIR}
+  -DQt5WebSockets_DIR=${Qt5WebSockets_DIR}
   -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
   -DWSJT_GENERATE_DOCS=OFF
   -DWSJT_SKIP_MANPAGES=ON

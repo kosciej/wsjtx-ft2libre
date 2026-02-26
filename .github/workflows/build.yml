@@ -36,7 +36,11 @@ jobs:
           cmake .. \
             -DWSJT_GENERATE_DOCS=OFF \
             -DWSJT_SKIP_MANPAGES=ON \
-            -DQt5_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5
+            -DQt5_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5 \
+            -DQt5Test_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5Test \
+            -DQt5SerialPort_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5SerialPort \
+            -DQt5WebSockets_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5WebSockets \
+            -DQt5Multimedia_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5Multimedia
           cmake --build . --target superpackage --parallel $(nproc)
 
       - name: Locate Package
@@ -72,7 +76,11 @@ jobs:
           cmake .. \
             -DWSJT_GENERATE_DOCS=OFF \
             -DWSJT_SKIP_MANPAGES=ON \
-            -DQt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5
+            -DQt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5 \
+            -DQt5Test_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5Test \
+            -DQt5SerialPort_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5SerialPort \
+            -DQt5WebSockets_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5WebSockets \
+            -DQt5Multimedia_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5Multimedia
           cmake --build . --target superpackage --parallel $(sysctl -n hw.ncpu)
 
       - name: Locate Package
