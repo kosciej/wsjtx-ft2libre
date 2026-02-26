@@ -162,18 +162,11 @@ endforeach ()
 # above
 #
 ExternalProject_Get_Property (hamlib INSTALL_DIR)
-ExternalProject_Add (wsjtx
-  GIT_REPOSITORY ${wsjtx_repo}
-  GIT_TAG ${WSJTX_TAG}
-  GIT_SHALLOW False
-  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/wsjtx
-  CMAKE_ARGS
-  ${CMAKE_ARGS}
+
 if (APPLE)
   if (NOT Qt5_DIR)
     set (Qt5_DIR /opt/homebrew/opt/qt@5/lib/cmake/Qt5)
   endif ()
-  # ... other Qt5 paths can be found automatically if Qt5_DIR is correct or CMAKE_PREFIX_PATH is set
 endif ()
 
 ExternalProject_Add (wsjtx
