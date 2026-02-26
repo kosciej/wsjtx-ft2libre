@@ -169,17 +169,31 @@ ExternalProject_Add (wsjtx
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/wsjtx
   CMAKE_ARGS
   ${CMAKE_ARGS}
+if (APPLE)
+  if (NOT Qt5_DIR)
+    set (Qt5_DIR /opt/homebrew/opt/qt@5/lib/cmake/Qt5)
+  endif ()
+  # ... other Qt5 paths can be found automatically if Qt5_DIR is correct or CMAKE_PREFIX_PATH is set
+endif ()
+
+ExternalProject_Add (wsjtx
+  GIT_REPOSITORY ${wsjtx_repo}
+  GIT_TAG ${WSJTX_TAG}
+  GIT_SHALLOW False
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/wsjtx
+  CMAKE_ARGS
+  ${CMAKE_ARGS}
   -DCMAKE_PREFIX_PATH=${INSTALL_DIR}
-  -DQt5_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5
-  -DQt5Test_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Test
-  -DQt5Widgets_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Widgets
-  -DQt5Gui_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Gui
-  -DQt5Core_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Core
-  -DQt5Network_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Network
-  -DQt5PrintSupport_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5PrintSupport
-  -DQt5Sql_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Sql
-  -DQt5Svg_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Svg
-  -DQt5Multimedia_DIR=/opt/homebrew/opt/qt@5/lib/cmake/Qt5Multimedia
+  -DQt5_DIR=${Qt5_DIR}
+  -DQt5Test_DIR=${Qt5Test_DIR}
+  -DQt5Widgets_DIR=${Qt5Widgets_DIR}
+  -DQt5Gui_DIR=${Qt5Gui_DIR}
+  -DQt5Core_DIR=${Qt5Core_DIR}
+  -DQt5Network_DIR=${Qt5Network_DIR}
+  -DQt5PrintSupport_DIR=${Qt5PrintSupport_DIR}
+  -DQt5Sql_DIR=${Qt5Sql_DIR}
+  -DQt5Svg_DIR=${Qt5Svg_DIR}
+  -DQt5Multimedia_DIR=${Qt5Multimedia_DIR}
   -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
   -DWSJT_GENERATE_DOCS=OFF
   -DWSJT_SKIP_MANPAGES=ON
