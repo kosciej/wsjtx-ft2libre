@@ -4,6 +4,8 @@ Following article was Vibe Coded (sic!), to show some irony on vibe coding and n
 
 # Vibe Reverse Engineering of Vibe Coded Code for Fun and Non-Profit
 
+> **Note**: For a detailed line-by-line technical specification and comparison with FT4, see [FT4_FT2L_differences.md](FT4_FT2L_differences.md).
+
 *Reverse-engineering the FT2 digital radio protocol with AI assistance, signal analysis, and a lot of wrong turns.*
 
 ## Background
@@ -198,6 +200,19 @@ With the protocol fully characterized from source code, we began implementing FT
 | BT | 2.0 (FT8 default) | 1.0 |
 
 Even after correcting the protocol parameters, detailed comparison with the reference Decodium implementation revealed numerous algorithmic differences in the decoder — sync correlation method, bit metrics computation, signal subtraction, DT search strategy, and more. These are documented in detail in [research/differences.md](research/differences.md) and represent the ongoing work of achieving full compatibility.
+
+## Final Protocol Summary (FT2L)
+
+The successful implementation in WSJT-X confirms the following definitive protocol parameters for FT2L:
+
+- **Timing**: The T/R cycle is exactly **3.75 seconds** (16 cycles per minute). A single transmission burst lasts **2.52 seconds**, fitting comfortably within the window after a 500ms startup delay.
+- **Sync Structure**: Synchronization is achieved using **four 4x4 Costas arrays**. These are permutations of the 4-tone alphabet `{0, 1, 3, 2}` and are placed at symbols 1-4, 34-37, 67-70, and 100-103.
+- **Payload & Length**: The frame consists of **105 channel symbols** in total:
+    - 1 Ramp-up symbol
+    - 16 Sync symbols (4 Costas arrays)
+    - 87 Data symbols (carrying 174 LDPC-encoded bits)
+    - 1 Ramp-down symbol
+- **Throughput**: By doubling the symbol rate of FT4 to **41.667 Baud** (NSPS=288), the protocol delivers a raw information rate of **30.56 bps** while maintaining the standard 77-bit WSJT-X message format.
 
 ## Lessons Learned
 
