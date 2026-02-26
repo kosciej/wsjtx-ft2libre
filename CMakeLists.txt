@@ -113,8 +113,10 @@ ExternalProject_Add (hamlib
   GIT_REPOSITORY ${hamlib_repo}
   GIT_TAG ${hamlib_TAG}
   GIT_SHALLOW False
-  URL ${CMAKE_CURRENT_SOURCE_DIR}/src/${__hamlib_upstream}.tar.gz
-  URL_HASH MD5=${hamlib_md5sum}
+  # If local directory exists, use it as SOURCE_DIR
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/hamlib-4.7
+  # URL ${CMAKE_CURRENT_SOURCE_DIR}/src/${__hamlib_upstream}.tar.gz
+  # URL_HASH MD5=${hamlib_md5sum}
   #UPDATE_COMMAND ${CMAKE_COMMAND} -E env "[ -f ./bootstrap ] && ./bootstrap"
   PATCH_COMMAND ${PATCH_EXECUTABLE} -p1 -N < ${CMAKE_CURRENT_SOURCE_DIR}/hamlib.patch
   CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --disable-shared --enable-static --without-cxx-binding ${EXTRA_FLAGS} # LIBUSB_LIBS=${USB_LIBRARY}

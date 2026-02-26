@@ -115,7 +115,7 @@ jobs:
             mingw-w64-x86_64-fftw
             mingw-w64-x86_64-libusb
             mingw-w64-x86_64-boost
-            patch git
+            patch git make
 
       - name: Build and Package
         shell: msys2 {0}
